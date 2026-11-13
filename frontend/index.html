@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <title>Google Maps</title>
+
+  <!-- PWA & Mobile Web App Meta -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1a73e8">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="application-name" content="SafeRoute V2V">
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+  <!-- Google Fonts: Roboto & Product Sans feel -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="/static/css/google_maps.css">
+</head>
+<body>
+  <div id="app-container">
+    <!-- Fullscreen Map Canvas -->
+    <div id="map"></div>
+
+    <!-- ============================================================ -->
+    <!-- TOP SEARCH BAR & FILTER CHIPS (Google Maps Android Style)     -->
+    <!-- ============================================================ -->
+    <div id="gmaps-top-container" class="gmaps-top-container">
+      <!-- Search Card -->
+      <div class="gmaps-search-card">
+        <button class="gmaps-search-icon-btn" id="gmaps-search-action-btn" title="Search">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="#5f6368">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+        </button>
+
+        <input type="text" id="gmaps-search-input" class="gmaps-search-input" placeholder="Search here" autocomplete="off" spellcheck="false">
+
+        <button class="gmaps-search-icon-btn" id="gmaps-clear-search-btn" style="display:none;" title="Clear">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="#5f6368">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+          </svg>
+        </button>
+
+        <button class="gmaps-search-icon-btn" id="gmaps-mic-btn" title="Voice Search">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="#4285f4">
+            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
+          </svg>
+        </button>
+
+        <button class="gmaps-profile-btn" id="gmaps-profile-btn" title="Account / Device Info">
+          <div class="gmaps-avatar-badge" id="gmaps-avatar-text">U</div>
+        </button>
+      </div>
+
+      <!-- Quick Category Filter Chips (Google Maps Android) -->
+      <div class="gmaps-chips-scroll" id="gmaps-chips-scroll">
+        <button class="gmaps-chip gmaps-chip-ambulance" id="chip-ambulance-mode" onclick="appController.toggleAmbulanceMode()" title="Toggle Ambulance Mode (Expands Analysis Zone to 750m & Broadcasts Continuous Route Clearance)">
+          <span class="chip-icon">🚑</span> <span id="chip-ambulance-text">Ambulance Mode (750m)</span>
+        </button>
+        <button class="gmaps-chip" onclick="appController.searchQuickCategory('Petrol')">
+          <span class="chip-icon">⛽</span> Petrol
+        </button>
+        <button class="gmaps-chip" onclick="appController.searchQuickCategory('Restaurants')">
+          <span class="chip-icon">🍽️</span> Restaurants
+        </button>
+        <button class="gmaps-chip" onclick="appController.searchQuickCategory('Hospitals')">
+          <span class="chip-icon">🏥</span> Hospitals
+        </button>
+        <button class="gmaps-chip" onclick="appController.searchQuickCategory('Cafes')">
+          <span class="chip-icon">☕</span> Coffee
+        </button>
+        <button class="gmaps-chip" onclick="appController.searchQuickCategory('Groceries')">
+          <span class="chip-icon">🛒</span> Groceries
+        </button>
+        <button class="gmaps-chip" onclick="appController.searchQuickCategory('Hotels')">
+          <span class="chip-icon">🏨</span> Hotels
+        </button>
+      </div>
+
+      <!-- Search Suggestions / Autocomplete Dropdown -->
+      <div id="gmaps-search-dropdown" class="gmaps-search-dropdown" style="display:none;">
+        <div class="gmaps-dropdown-header">Suggestions</div>
+        <div id="gmaps-suggestions-list" class="gmaps-suggestions-list"></div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- FLOATING ACTION BUTTONS (Right Side)                         -->
+    <!-- ============================================================ -->
+    <div class="gmaps-fab-column">
+      <!-- Layers FAB -->
+      <button class="gmaps-fab-circle" id="gmaps-layers-btn" onclick="appController.toggleLayersSheet()" title="Map layers">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="#5f6368">
+          <path d="M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27zM12 16l7.36-5.73L21 9.07l-9-7-9 7 1.63 1.27zm0-11.47L17.74 8.5 12 12.97 6.26 8.5z"/>
+        </svg>
+      </button>
+
+      <!-- Compass FAB -->
+      <button class="gmaps-fab-circle" id="gmaps-compass-btn" onclick="mapController.resetNorth()" title="Reset North">
+        <svg id="gmaps-compass-icon" viewBox="0 0 24 24" width="22" height="22">
+          <polygon points="12,2 8,12 12,9" fill="#ea4335"/>
+          <polygon points="12,2 16,12 12,9" fill="#ea4335"/>
+          <polygon points="12,22 8,12 12,15" fill="#bdc1c6"/>
+          <polygon points="12,22 16,12 12,15" fill="#bdc1c6"/>
+        </svg>
+      </button>
+
+      <!-- My Location FAB (Crosshair) -->
+      <button class="gmaps-fab-circle" id="gmaps-my-location-btn" onclick="appController.centerOnMyLocation()" title="Your location">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="#1a73e8">
+          <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+        </svg>
+      </button>
+
+      <!-- Women Safety SOS FAB (In this place only) -->
+      <button class="gmaps-fab-circle gmaps-sos-fab" id="gmaps-sos-btn" onclick="appController.toggleWomenSafetySOS()" title="Women Safety SOS (Tap to Activate / Deactivate Emergency Alert)">
+        <div class="sos-fab-content">
+          <span class="sos-fab-icon">🛡️</span>
+          <span class="sos-fab-text" id="sos-fab-label">SOS</span>
+        </div>
+      </button>
+    </div>
+
+    <!-- Large Blue Directions FAB (Google Maps Classic) -->
+    <button class="gmaps-directions-fab" id="gmaps-directions-fab" onclick="appController.openDirectionsSheet()" title="Directions">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="#ffffff">
+        <path d="M22.43 10.59l-9.01-9.01c-.75-.75-2.07-.76-2.83 0l-9 9c-.78.78-.78 2.04 0 2.82l9 9c.39.39.9.58 1.41.58.51 0 1.02-.2 1.41-.59l9.01-9.01c.79-.77.79-2.04.01-2.79zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>
+      </svg>
+      <span class="directions-fab-label">Directions</span>
+    </button>
+
+    <!-- ============================================================ -->
+    <!-- BOTTOM SHEET: ROUTE PLANNER & OVERVIEW                       -->
+    <!-- ============================================================ -->
+    <div id="gmaps-route-card" class="gmaps-bottom-card" style="display:none;">
+      <div class="gmaps-drag-handle"></div>
+
+      <!-- Mode Selector (Driving, Two-Wheeler, Walking) -->
+      <div class="gmaps-travel-modes">
+        <button class="travel-mode-tab active" data-mode="driving" onclick="appController.setTravelMode('driving')">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
+          <span id="route-mode-car-time">-- min</span>
+        </button>
+        <button class="travel-mode-tab" data-mode="motorcycle" onclick="appController.setTravelMode('motorcycle')">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19.44 9.03L15.41 5H11v2h3.59l2 2H5c-2.8 0-5 2.2-5 5s2.2 5 5 5c2.46 0 4.45-1.69 4.9-4h4.2c.45 2.31 2.44 4 4.9 4 2.8 0 5-2.2 5-5 0-2.5-1.84-4.57-4.24-4.93l-.32-.04zM5 17c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm14 0c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg>
+          <span id="route-mode-bike-time">-- min</span>
+        </button>
+        <button class="travel-mode-tab" data-mode="walking" onclick="appController.setTravelMode('walking')">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/></svg>
+          <span id="route-mode-walk-time">-- min</span>
+        </button>
+      </div>
+
+      <!-- Route Endpoints -->
+      <div class="gmaps-route-endpoints">
+        <div class="endpoint-row">
+          <span class="endpoint-dot origin"></span>
+          <span class="endpoint-name" id="route-origin-label">Your location</span>
+        </div>
+        <div class="endpoint-line"></div>
+        <div class="endpoint-row">
+          <span class="endpoint-dot destination"></span>
+          <span class="endpoint-name" id="route-destination-label">Select destination</span>
+        </div>
+      </div>
+
+      <!-- Route Details Summary -->
+      <div class="gmaps-route-summary">
+        <div class="route-time-col">
+          <div class="route-duration" id="route-summary-duration">-- min</div>
+          <div class="route-meta">
+            <span id="route-summary-distance">-- km</span> • <span id="route-summary-traffic" class="text-green">Fastest route now</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Route Actions -->
+      <div class="gmaps-route-actions">
+        <button class="gmaps-btn-primary" id="btn-start-navigation" onclick="appController.startNavigation()">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="#ffffff"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg>
+          Start
+        </button>
+        <button class="gmaps-btn-secondary" onclick="appController.cancelRoute()">
+          Cancel
+        </button>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- V2V COLLISION PREDICTION PROCESS INSPECTOR HUD                 -->
+    <!-- ============================================================ -->
+    <div id="gmaps-collision-inspector-hud" class="gmaps-collision-card" style="display:none;">
+      <div class="collision-card-header">
+        <div class="collision-badge-row">
+          <span class="v2v-live-radar-dot"></span>
+          <span class="collision-header-title">V2V Collision Prediction (IEEE IV-E)</span>
+          <span class="collision-tag" id="collision-level-tag">MONITORING</span>
+        </div>
+        <button class="collision-close-btn" onclick="appController.stopCollisionSimulation()" title="Close Simulation">✕</button>
+      </div>
+
+      <div class="collision-card-body">
+        <div class="collision-main-alert">
+          <div class="collision-alert-icon" id="collision-alert-icon">⚡</div>
+          <div class="collision-alert-info">
+            <div class="collision-alert-title" id="collision-alert-title">Evaluating V2V Convergence</div>
+            <div class="collision-alert-desc" id="collision-alert-desc">Nearby vehicle converging towards your intersection path</div>
+          </div>
+          <div class="collision-countdown-box" id="collision-countdown-box">
+            <span class="countdown-val" id="collision-t-star-val">--</span>
+            <span class="countdown-lbl">T_CPA</span>
+          </div>
+        </div>
+
+        <div class="collision-math-grid">
+          <div class="math-col">
+            <span class="math-label">Time to Impact</span>
+            <span class="math-val" id="math-tcpa">-- s</span>
+          </div>
+          <div class="math-col">
+            <span class="math-label">Est. Distance</span>
+            <span class="math-val" id="math-dcpa">-- m</span>
+          </div>
+          <div class="math-col">
+            <span class="math-label">Safety Buffer</span>
+            <span class="math-val" id="math-dsafe">4.25 m</span>
+          </div>
+          <div class="math-col">
+            <span class="math-label">Approach Direction</span>
+            <span class="math-val" id="math-bearing">RIGHT</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- IN-DRIVE NAVIGATION HUD (Google Maps Turn-by-Turn Screen)      -->
+    <!-- ============================================================ -->
+    <div id="gmaps-nav-hud" style="display:none;">
+      <!-- Top Dark Green Maneuver Banner -->
+      <div class="gmaps-nav-banner">
+        <div class="nav-maneuver-icon" id="nav-maneuver-icon">⬆️</div>
+        <div class="nav-maneuver-text-col">
+          <div class="nav-maneuver-dist" id="nav-maneuver-dist">In 200 m</div>
+          <div class="nav-maneuver-instruction" id="nav-maneuver-street">Head towards destination</div>
+        </div>
+        <div class="nav-v2v-radar-badge" id="nav-v2v-radar-badge" title="V2V 500m Collision Detection Active">
+          <span class="radar-pulse-dot"></span> 500M V2V
+        </div>
+      </div>
+
+      <!-- In-Drive Floating Route Action: Simulate Collision on Active Route (Only appears when route starts) -->
+      <div class="gmaps-nav-floating-actions">
+        <button class="gmaps-nav-sim-pill" id="btn-toggle-collision-sim" onclick="appController.toggleCollisionSimulation()" title="Simulate Impending Vehicle Collision on Active Route">
+          <span class="sim-pill-icon">⚡</span>
+          <span id="sim-chip-label">Simulate Route Collision</span>
+        </button>
+      </div>
+
+      <!-- Google Maps In-Nav Predictive Collision Alert (Drop-down Banner) -->
+      <div id="gmaps-hazard-banner" class="gmaps-hazard-banner" style="display:none;">
+        <div class="hazard-icon">⚠️</div>
+        <div class="hazard-text-col">
+          <div class="hazard-title" id="hazard-banner-title">COLLISION RISK AHEAD</div>
+          <div class="hazard-desc" id="hazard-banner-desc">Vehicle approaching along path</div>
+          <div class="hazard-pills" id="hazard-banner-pills"></div>
+        </div>
+      </div>
+
+      <!-- Bottom-Left Speedometer -->
+      <div class="gmaps-speedometer" id="gmaps-speedometer">
+        <div class="speed-number" id="nav-speed-number">0</div>
+        <div class="speed-unit">km/h</div>
+      </div>
+
+      <!-- Bottom Navigation Control Card -->
+      <div class="gmaps-nav-bottom-card">
+        <div class="nav-time-meta">
+          <span class="nav-time-large" id="nav-live-duration">-- min</span>
+          <span class="nav-meta-sub" id="nav-live-meta">-- km • --:--</span>
+        </div>
+
+        <div class="nav-action-buttons">
+          <button class="nav-circle-btn" id="nav-audio-btn" onclick="appController.toggleVoiceMute()" title="Voice guidance">
+            <svg id="nav-audio-icon" viewBox="0 0 24 24" width="22" height="22" fill="#5f6368">
+              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+            </svg>
+          </button>
+          <button class="nav-circle-btn exit-btn" onclick="appController.exitNavigation()" title="Exit navigation">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="#d93025">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- MODALS: LAYERS SHEET & USER ACCOUNT MODAL                    -->
+    <!-- ============================================================ -->
+    <!-- Layers Sheet Modal -->
+    <div id="gmaps-layers-sheet" class="gmaps-modal-sheet" style="display:none;">
+      <div class="gmaps-drag-handle"></div>
+      <div class="modal-title">Map type</div>
+      <div class="layers-grid">
+        <button class="layer-option active" data-layer="google_roads" onclick="appController.selectMapLayer('google_roads')">
+          <div class="layer-preview-box roads">🗺️</div>
+          <span>Default</span>
+        </button>
+        <button class="layer-option" data-layer="google_satellite" onclick="appController.selectMapLayer('google_satellite')">
+          <div class="layer-preview-box satellite">🛰️</div>
+          <span>Satellite</span>
+        </button>
+      </div>
+      <div class="modal-title" style="margin-top:14px;">Vehicle Priority Mode</div>
+      <div class="v2v-mode-selector">
+        <button class="v2v-mode-btn active" id="btn-mode-standard" onclick="appController.setUserRole('standard')">🚗 Standard (500m)</button>
+        <button class="v2v-mode-btn" id="btn-mode-ambulance" onclick="appController.setUserRole('ambulance')">🚑 Ambulance (750m)</button>
+      </div>
+    </div>
+
+    <!-- Women Safety SOS Emergency Sheet / Dialog -->
+    <div id="gmaps-sos-dialog" class="gmaps-dialog" style="display:none;">
+      <div class="gmaps-dialog-card sos-card">
+        <div class="profile-header sos-header">
+          <div class="sos-badge-icon">🛡️</div>
+          <div class="profile-meta">
+            <div class="profile-name" style="color:#b91c1c;">Women Safety SOS Active</div>
+            <div class="profile-device-id">Dispatched to Police 112 & Guardians</div>
+          </div>
+          <button class="dialog-close-btn" onclick="appController.closeSOSDialog()">✕</button>
+        </div>
+        <div class="profile-divider"></div>
+        <div class="profile-status-row">
+          <span>Live Tracking Link:</span>
+          <span id="sos-live-link" style="font-size:11px; font-weight:700; color:#1a73e8; word-break:break-all;">Generating...</span>
+        </div>
+        <div class="profile-status-row">
+          <span>Guardian SMS:</span>
+          <span class="status-badge green">📲 Dispatched (3 Contacts)</span>
+        </div>
+        <div class="profile-status-row">
+          <span>GPS Beacon:</span>
+          <span class="status-badge red">🔴 High Priority Distress Broadcast</span>
+        </div>
+        <div style="margin-top:14px; display:flex; gap:8px;">
+          <button class="gmaps-btn-primary" style="background:#dc2626; flex:1;" onclick="appController.toggleWomenSafetySOS()">
+            Cancel Emergency SOS
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Device / Profile Dialog -->
+    <div id="gmaps-profile-dialog" class="gmaps-dialog" style="display:none;">
+      <div class="gmaps-dialog-card">
+        <div class="profile-header">
+          <div class="profile-avatar-large" id="dialog-avatar">U</div>
+          <div class="profile-meta">
+            <div class="profile-name" id="dialog-device-label">Android User</div>
+            <div class="profile-device-id" id="dialog-device-id">Device: ID-XXXX</div>
+          </div>
+          <button class="dialog-close-btn" onclick="appController.closeProfileDialog()">✕</button>
+        </div>
+        <div class="profile-divider"></div>
+        <div class="profile-status-row">
+          <span>V2V Connectivity:</span>
+          <span id="dialog-conn-status" class="status-badge green">🟢 Connected (1s Ts)</span>
+        </div>
+        <div class="profile-status-row">
+          <span>GPS Sensor:</span>
+          <span id="dialog-gps-status" class="status-badge blue">📍 High Accuracy (±2.5m)</span>
+        </div>
+        <div class="profile-status-row">
+          <span>Radar Range:</span>
+          <span class="status-badge">📡 500m Predictive Zone</span>
+        </div>
+        <div class="profile-divider"></div>
+        <div class="profile-actions">
+          <button class="gmaps-btn-primary" onclick="appController.closeProfileDialog()" style="width:100%;">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Post-Collision Accident Reporting & Emergency Dispatch Dialog -->
+    <div id="gmaps-accident-dialog" class="gmaps-dialog" style="display:none; z-index:3500;">
+      <div class="gmaps-dialog-card accident-card">
+        <div class="accident-header">
+          <div class="accident-beacon-icon">💥</div>
+          <div class="accident-title-col">
+            <div class="accident-title-text">ACCIDENT OCCURRED</div>
+            <div class="accident-subtitle-text">Impact Confirmed • Both Vehicles Stopped</div>
+          </div>
+          <button class="dialog-close-btn" onclick="appController.dismissAccidentDialog()">✕</button>
+        </div>
+
+        <div class="accident-status-banner">
+          <span class="status-pulse-dot red"></span>
+          <span>Emergency distress automatically transmitted to nearest Hospital & Police Station</span>
+        </div>
+
+        <div class="accident-location-box">
+          <div class="accident-loc-row">
+            <span class="loc-label">📍 Incident Location:</span>
+            <span class="loc-val" id="accident-loc-text">Avinashi Road near Hope College / GD Naidu Flyover</span>
+          </div>
+          <div class="accident-loc-row">
+            <span class="loc-label">⏱️ Impact Time:</span>
+            <span class="loc-val" id="accident-time-text">Just now</span>
+          </div>
+          <div class="accident-loc-row">
+            <span class="loc-label">🚗 Vehicles Involved:</span>
+            <span class="loc-val" id="accident-vehicles-text">Host Vehicle (Me) & Red Hatchback (V2V-Nearby)</span>
+          </div>
+        </div>
+
+        <div class="accident-dispatch-grid">
+          <!-- Nearest Hospital Card -->
+          <div class="dispatch-unit-card hospital">
+            <div class="unit-icon-badge">🏥</div>
+            <div class="unit-meta">
+              <div class="unit-name" id="accident-hosp-name">Sumith Multispeciality Hospital</div>
+              <div class="unit-details" id="accident-hosp-dist">350 m away • ETA 2 min</div>
+              <div class="unit-status-pill green" id="accident-hosp-status">🚑 Ambulance Dispatched (108)</div>
+            </div>
+          </div>
+
+          <!-- Nearest Police Station Card -->
+          <div class="dispatch-unit-card police">
+            <div class="unit-icon-badge">🚓</div>
+            <div class="unit-meta">
+              <div class="unit-name" id="accident-police-name">Peelamedu Police Station (B-4)</div>
+              <div class="unit-details" id="accident-police-dist">800 m away • ETA 3 min</div>
+              <div class="unit-status-pill blue" id="accident-police-status">🚓 Patrol Unit 4 Assigned (112)</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="accident-actions">
+          <button class="gmaps-btn-primary" onclick="appController.shareAccidentLocation()" style="flex:1; background:#1a73e8;">
+            📲 Share Live GPS Beacon
+          </button>
+          <button class="gmaps-btn-secondary" onclick="appController.dismissAccidentDialog()" style="flex:1;">
+            Close Alert
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backdrop -->
+    <div id="gmaps-backdrop" class="gmaps-backdrop" style="display:none;" onclick="appController.closeAllModals()"></div>
+  </div>
+
+  <!-- Leaflet JavaScript -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Application Modules -->
+  <script src="/static/js/audio_alerts.js"></script>
+  <script src="/static/js/map_controller.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

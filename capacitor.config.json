@@ -1,0 +1,13 @@
+{
+  "appId": "com.v2v.saferoute",
+  "appName": "SafeRoute V2V",
+  "webDir": "frontend",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "http://192.168.0.104:8080",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.env
+.venv
+venv/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Android / Capacitor
+android/
+node_modules/
+package-lock.json
+
+# Windows
+Thumbs.db
+desktop.ini
+

@@ -1,0 +1,1038 @@
+/* Smart V2V Collision System - Component Specific Styles */
+
+/* Modal & Floating Panels */
+.v2v-panel {
+  background: var(--gm-surface);
+  border-radius: var(--gm-radius-lg);
+  box-shadow: var(--gm-shadow-hover);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panel-title {
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--gm-on-surface);
+}
+
+.panel-subtitle {
+  font-size: 12px;
+  color: var(--gm-secondary);
+}
+
+/* Women Safety SOS Panel */
+.sos-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+}
+
+.sos-big-btn {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ef4444 0%, #b91c1c 100%);
+  border: 6px solid #fee2e2;
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.45);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.sos-big-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 12px 30px rgba(220, 38, 38, 0.6);
+}
+
+.sos-big-btn:active {
+  transform: scale(0.96);
+}
+
+.sos-big-btn.active-distress {
+  background: radial-gradient(circle, #dc2626 0%, #7f1d1d 100%);
+  animation: pulseDistress 0.8s infinite alternate;
+  border-color: #fca5a5;
+}
+
+@keyframes pulseDistress {
+  0% { transform: scale(1); box-shadow: 0 0 10px #dc2626; }
+  100% { transform: scale(1.08); box-shadow: 0 0 40px #ef4444; }
+}
+
+.sos-btn-text {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+}
+
+.sos-btn-sub {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  opacity: 0.9;
+}
+
+.sos-status-box {
+  width: 100%;
+  padding: 12px;
+  border-radius: var(--gm-radius-md);
+  background: #f8fafc;
+  border: 1px solid var(--gm-divider);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sos-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.sos-active-badge {
+  color: #dc2626;
+}
+
+.sos-standby-badge {
+  color: #16a34a;
+}
+
+/* Contacts List */
+.contact-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: var(--gm-radius-md);
+  border: 1px solid #edf2f7;
+  font-size: 13px;
+}
+
+.contact-name {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.contact-phone {
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* SMS Gateway Outbox Simulation */
+.sms-log-box {
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 12px;
+  border-radius: var(--gm-radius-md);
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.sms-log-entry {
+  border-left: 2px solid #38bdf8;
+  padding-left: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sms-log-header {
+  color: #38bdf8;
+  font-weight: bold;
+}
+
+/* Scenario Analysis Table III Card */
+.scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.scenario-card-btn {
+  padding: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--gm-radius-md);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scenario-card-btn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+}
+
+.scenario-card-btn.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.scenario-id-tag {
+  font-size: 11px;
+  font-weight: 800;
+  color: #2563eb;
+}
+
+.scenario-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.scenario-decision-tag {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  align-self: flex-start;
+  font-weight: 600;
+}
+
+.decision-warning { background: #fed7aa; color: #9a3412; }
+.decision-critical { background: #fecaca; color: #991b1b; }
+.decision-noalert { background: #dcfce7; color: #166534; }
+
+/* Analytical Step-by-Step Math Inspector */
+.math-inspector {
+  background: #1e293b;
+  color: #f8fafc;
+  border-radius: var(--gm-radius-md);
+  padding: 14px;
+  font-size: 12px;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.math-row {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #334155;
+  padding-bottom: 4px;
+}
+
+.math-key {
+  color: #94a3b8;
+}
+
+.math-val {
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+/* Bottom Simulation Controller Bar */
+.gm-sim-bar {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: var(--gm-radius-full);
+  box-shadow: var(--gm-shadow-hover);
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--gm-divider);
+}
+
+.sim-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--gm-radius-full);
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: #1e293b;
+}
+
+.sim-btn:hover {
+  background: #e2e8f0;
+}
+
+.sim-btn.primary {
+  background: var(--gm-blue);
+  color: #fff;
+  border-color: var(--gm-blue);
+}
+
+.sim-btn.primary:hover {
+  background: var(--gm-blue-hover);
+}
+
+.sim-slider-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--gm-secondary);
+}
+
+/* Custom Marker Styling */
+.v2v-marker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s linear;
+}
+
+.v2v-marker-inner {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  border: 3px solid #1a73e8;
+}
+
+.v2v-marker.role-host .v2v-marker-inner {
+  border-color: #10b981;
+  background: #ecfdf5;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.7);
+}
+
+.v2v-marker.outside-500m-zone {
+  opacity: 0.45;
+  filter: grayscale(85%);
+}
+
+.v2v-marker.outside-500m-zone .v2v-marker-label {
+  background: rgba(100, 116, 139, 0.8);
+}
+
+.v2v-marker.threat-advisory .v2v-marker-inner {
+  border-color: var(--alert-advisory);
+  background: #fffbeb;
+}
+
+.v2v-marker.threat-warning .v2v-marker-inner {
+  border-color: var(--alert-warning);
+  background: #fff7ed;
+  animation: markerShake 0.4s infinite alternate;
+}
+
+.v2v-marker.threat-critical .v2v-marker-inner {
+  border-color: var(--alert-critical);
+  background: #fef2f2;
+  animation: markerPulseCritical 0.6s infinite alternate;
+}
+
+.v2v-marker.role-ambulance .v2v-marker-inner {
+  border-color: #0284c7;
+  background: #f0f9ff;
+  animation: strobeAmbulance 0.4s infinite alternate;
+}
+
+@keyframes markerPulseCritical {
+  from { transform: scale(1); box-shadow: 0 0 6px #ef4444; }
+  to { transform: scale(1.15); box-shadow: 0 0 18px #b91c1c; }
+}
+
+@keyframes strobeAmbulance {
+  0% { border-color: #ef4444; box-shadow: 0 0 10px #ef4444; }
+  100% { border-color: #3b82f6; box-shadow: 0 0 10px #3b82f6; }
+}
+
+.v2v-marker-label {
+  position: absolute;
+  top: -20px;
+  background: rgba(0,0,0,0.75);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* In-Vehicle Android Display HUD Mode */
+body.head-unit-mode {
+  background: #000;
+}
+
+body.head-unit-mode .gm-searchbox-wrapper {
+  display: none;
+}
+
+body.head-unit-mode .gm-speedometer {
+  bottom: 30px;
+  left: 30px;
+}
+
+body.head-unit-mode .gm-speed-circle {
+  width: 100px;
+  height: 100px;
+  background: #111;
+  color: #fff;
+  border-width: 4px;
+}
+
+body.head-unit-mode .gm-speed-val {
+  font-size: 36px;
+}
+
+body.head-unit-mode .gm-nav-banner {
+  top: 20px;
+  min-width: 450px;
+  font-size: 18px;
+}
+
+
+
+/* ================================================================
+   ROUTING & NAVIGATION STYLES — Google Maps Route Panel
+   ================================================================ */
+
+/* Navigate chip */
+.gm-chip.navigate-chip {
+  background: #1a73e8;
+  color: #fff;
+  border-color: #1a73e8;
+}
+.gm-chip.navigate-chip:hover, .gm-chip.navigate-chip.active {
+  background: #1557b0;
+  border-color: #1557b0;
+  color: #fff;
+}
+
+/* Destination search input */
+.dest-search-wrap {
+  margin-top: 8px;
+}
+
+.dest-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 24px;
+  font-size: 13px;
+  font-family: 'Roboto', sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+  background: #f8fafc;
+}
+.dest-search-input:focus {
+  border-color: #1a73e8;
+  background: #fff;
+}
+
+/* Destination list */
+.destination-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 230px;
+  overflow-y: auto;
+}
+
+.destination-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.destination-item:hover {
+  background: #f0f7ff;
+}
+
+.dest-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.dest-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dest-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dest-addr {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Selected destination card */
+.dest-selected-card {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1.5px solid #93c5fd;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.dest-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dest-card-icon {
+  font-size: 22px;
+}
+
+.dest-card-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1d4ed8;
+}
+
+.dest-card-addr {
+  font-size: 11px;
+  color: #3b82f6;
+  margin-top: 2px;
+}
+
+.dest-card-coords {
+  font-size: 10px;
+  color: #64748b;
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 6px;
+  padding-left: 2px;
+}
+
+/* Route summary row */
+.route-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.route-source-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+}
+.route-source-badge.osrm {
+  background: #d1fae5;
+  color: #065f46;
+}
+.route-source-badge.sim {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.route-dist-badge, .route-time-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: #f1f5f9;
+  color: #334155;
+}
+
+/* Turn-by-turn steps list */
+.turn-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.turn-step-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 6px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.turn-step-item:hover {
+  background: #f8fafc;
+}
+
+.turn-step-icon {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.turn-step-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.turn-step-instr {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.turn-step-dist {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+/* Route hazard items */
+.route-hazard-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 8px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+
+.route-hazard-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.route-hazard-text {
+  flex: 1;
+}
+
+.route-hazard-msg {
+  font-size: 12px;
+  font-weight: 600;
+  color: #c2410c;
+  line-height: 1.4;
+}
+
+.route-hazard-dist {
+  font-size: 11px;
+  color: #9a3412;
+  margin-top: 2px;
+}
+
+/* Map route pin markers */
+.route-pin-start {
+  width: 32px;
+  height: 32px;
+  background: #16a34a;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.route-pin-start span {
+  transform: rotate(45deg);
+}
+
+.route-pin-dest {
+  width: 32px;
+  height: 32px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Route turn icon dots on map */
+.route-turn-dot {
+  width: 22px;
+  height: 22px;
+  background: #fff;
+  border: 2px solid #1a73e8;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  cursor: pointer;
+}
+
+/* Route hazard badge on map */
+.route-hazard-badge {
+  width: 30px;
+  height: 30px;
+  background: #fff7ed;
+  border: 2px solid #ef4444;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  animation: pulseCritical 0.8s infinite alternate;
+  box-shadow: 0 2px 8px rgba(239,68,68,0.4);
+}
+
+
+/* ================================================================
+   GOOGLE MAPS AUTHENTIC PINS & ROUTE MARKERS
+   ================================================================ */
+
+/* Google Maps Start Pin ("You are here" pulsing blue dot) */
+.gm-start-location-marker {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gm-start-pulse {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(66, 133, 244, 0.35);
+  animation: gmPulse 2s ease-out infinite;
+}
+
+.gm-start-dot {
+  position: relative;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  background: #1a73e8;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes gmPulse {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  70% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* Google Maps Classic Red Destination Pin */
+.gm-dest-pin {
+  position: relative;
+  width: 32px;
+  height: 42px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gm-dest-head {
+  width: 32px;
+  height: 32px;
+  background: #ea4335;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+}
+
+.gm-dest-point {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 10px solid #ea4335;
+  margin-top: -2px;
+}
+
+
+/* ================================================================
+   PROFESSIONAL REAL-TIME VEHICLE MARKERS (NO CARTOONS)
+   ================================================================ */
+
+/* Smooth sliding movement for real-time telemetry updates */
+.leaflet-marker-icon {
+  transition: transform 0.95s linear, top 0.95s linear, left 0.95s linear !important;
+}
+
+/* Host Vehicle Puck (Google Maps Blue Navigation Arrow) */
+.gm-host-puck {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gm-host-pulse {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(26, 115, 232, 0.25);
+  animation: hostPulse 2s ease-out infinite;
+}
+
+.gm-host-chevron {
+  position: relative;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  background: #1a73e8;
+  border: 2.5px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes hostPulse {
+  0% { transform: scale(0.7); opacity: 0.9; }
+  70% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* Road Vehicle Vector Marker */
+.gm-road-vehicle {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.gm-veh-badge {
+  position: absolute;
+  top: -18px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(4px);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+}
+
+.gm-veh-body {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+  transition: transform 0.4s ease;
+}
+
+.gm-road-vehicle.threat-critical .gm-veh-body {
+  animation: vehShakeCritical 0.4s infinite alternate;
+  filter: drop-shadow(0 0 8px #ef4444);
+}
+
+.gm-road-vehicle.threat-warning .gm-veh-body {
+  filter: drop-shadow(0 0 6px #ea580c);
+}
+
+@keyframes vehShakeCritical {
+  from { transform: scale(1); }
+  to { transform: scale(1.18); }
+}
+
+/* Collision Hazard Point (Clean Google Maps warning ring, no cartoon) */
+.gm-collision-point {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gm-collision-ripple {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid #ef4444;
+  background: rgba(239, 68, 68, 0.2);
+  animation: hostPulse 1s ease-out infinite;
+}
+
+.gm-collision-core {
+  position: relative;
+  z-index: 2;
+  font-size: 14px;
+}
+
+/* ================================================================
+   GOOGLE MAPS BOTTOM TRIP NAVIGATION SHEET
+   ================================================================ */
+.gm-bottom-nav-card {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  padding: 14px 20px;
+  min-width: 360px;
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.gm-bottom-nav-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.gm-nav-time-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gm-nav-duration {
+  font-size: 24px;
+  font-weight: 800;
+  color: #16a34a; /* Google Maps green ETA */
+  letter-spacing: -0.5px;
+}
+
+.gm-nav-meta {
+  font-size: 13px;
+  color: #475569;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gm-fastest-pill {
+  color: #059669;
+  font-weight: 700;
+  background: #d1fae5;
+  padding: 1px 7px;
+  border-radius: 12px;
+  font-size: 11px;
+}
+
+.gm-nav-action-btn {
+  background: #1a73e8;
+  color: #ffffff;
+  border: none;
+  border-radius: 24px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(26, 115, 232, 0.35);
+  transition: background 0.15s;
+}
+.gm-nav-action-btn:hover {
+  background: #1557b0;
+}
+
+.gm-nav-exit-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.gm-nav-exit-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.gm-nav-step-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.gm-step-icon {
+  font-size: 16px;
+}
