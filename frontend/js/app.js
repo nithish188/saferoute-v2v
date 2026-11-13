@@ -75,6 +75,7 @@ class GoogleMapsAppController {
 
     // 3. Connect to Backend WebSocket stream with automatic HTTP fallback
     this.setupWebSocket();
+    this.startStateSyncLoop();
 
     // 4. Start Live GPS Tracking
     this.startLocationTracking();
@@ -113,14 +114,13 @@ class GoogleMapsAppController {
   }
 
   _updateProfileUI() {
-    const avatarLetter = this.deviceId.slice(-1).toUpperCase();
     const avatarEl = document.getElementById('gmaps-avatar-text');
     const diagAvatar = document.getElementById('dialog-avatar');
     const diagLabel = document.getElementById('dialog-device-label');
     const diagId = document.getElementById('dialog-device-id');
 
-    if (avatarEl) avatarEl.textContent = avatarLetter;
-    if (diagAvatar) diagAvatar.textContent = avatarLetter;
+    if (avatarEl) avatarEl.textContent = 'U';
+    if (diagAvatar) diagAvatar.textContent = 'U';
     if (diagLabel) diagLabel.textContent = this.deviceLabel;
     if (diagId) diagId.textContent = `V2V ID: ${this.deviceId}`;
   }
@@ -162,7 +162,7 @@ class GoogleMapsAppController {
     const radarBadges = document.querySelectorAll('.nav-v2v-radar-badge, #nav-v2v-radar-badge');
     radarBadges.forEach(b => {
       b.innerHTML = this.isAmbulanceMode
-        ? `<span class="radar-pulse-dot" style="background:#ef4444;"></span> 🚨 750M AMBULANCE CLEARANCE ZONE`
+        ? `<span class="radar-pulse-dot" style="background:#ef4444;"></span> 750M AMBULANCE`
         : `<span class="radar-pulse-dot"></span> 500M V2V`;
     });
 
@@ -452,7 +452,7 @@ class GoogleMapsAppController {
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
-        this.updateConnBadge(true);
+        this.updateConnBadge(true, 'WebSocket');
         // Identify ourselves to the V2V network
         this.ws.send(JSON.stringify({
           type: "IDENTIFY",
@@ -460,6 +460,14 @@ class GoogleMapsAppController {
           label: this.deviceLabel,
           role: this.userRole
         }));
+
+        // Keepalive heartbeat
+        if (this.wsPingTimer) clearInterval(this.wsPingTimer);
+        this.wsPingTimer = setInterval(() => {
+          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send("ping");
+          }
+        }, 20000);
       };
 
       this.ws.onmessage = (event) => {
@@ -467,27 +475,51 @@ class GoogleMapsAppController {
         try {
           const data = JSON.parse(event.data);
           this.handleStateUpdate(data);
+          this.updateConnBadge(true, 'WebSocket');
         } catch (e) {}
       };
 
       this.ws.onclose = () => {
-        this.updateConnBadge(false);
-        setTimeout(() => this.setupWebSocket(), 3000);
+        if (this.wsPingTimer) clearInterval(this.wsPingTimer);
+        setTimeout(() => this.setupWebSocket(), 5000);
       };
 
       this.ws.onerror = () => {
-        this.updateConnBadge(false);
+        if (this.wsPingTimer) clearInterval(this.wsPingTimer);
       };
-    } catch (e) {
-      this.updateConnBadge(false);
-    }
+    } catch (e) {}
   }
 
-  updateConnBadge(isConnected) {
+  startStateSyncLoop() {
+    if (this.stateSyncTimer) clearInterval(this.stateSyncTimer);
+    this.stateSyncTimer = setInterval(async () => {
+      // If WebSocket is active, it handles live streaming
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.updateConnBadge(true, 'WebSocket');
+        return;
+      }
+
+      // Seamless HTTP fallback polling for /api/state
+      try {
+        const resp = await fetch('/api/state');
+        if (resp.ok) {
+          const data = await resp.json();
+          this.handleStateUpdate(data);
+          this.updateConnBadge(true, 'Cloud Sync');
+        } else {
+          this.updateConnBadge(false);
+        }
+      } catch (e) {
+        this.updateConnBadge(false);
+      }
+    }, 1500);
+  }
+
+  updateConnBadge(isConnected, channel = '1s Ts') {
     const statusEl = document.getElementById('dialog-conn-status');
     if (statusEl) {
       statusEl.className = `status-badge ${isConnected ? 'green' : 'red'}`;
-      statusEl.textContent = isConnected ? '🟢 Connected (1s Ts)' : '🔴 Reconnecting...';
+      statusEl.textContent = isConnected ? `Connected (${channel})` : 'Reconnecting...';
     }
   }
 
@@ -1050,58 +1082,36 @@ class GoogleMapsAppController {
     this.nearbyVehicles = {
       "v2v_car_lead": {
         vehicle_id: "v2v_car_lead",
-        label: "White Sedan (Ahead)",
+        label: "Sedan",
         role: "standard",
         coords: routeCoords,
         cumDists: cumRoute,
-        baseOffset: 25.0,
-        distM: (userDist + 25.0) % totalRouteDist,
+        baseOffset: 35.0,
+        distM: (userDist + 35.0) % totalRouteDist,
         laneOffsetM: 0.8,
         speed: 8.5 // ~31 km/h
       },
       "v2v_car_trail": {
         vehicle_id: "v2v_car_trail",
-        label: "Silver Hatchback (Behind)",
+        label: "SUV",
         role: "standard",
         coords: routeCoords,
         cumDists: cumRoute,
-        baseOffset: -20.0,
-        distM: Math.max(5.0, (userDist - 20.0 + totalRouteDist) % totalRouteDist),
+        baseOffset: -30.0,
+        distM: Math.max(5.0, (userDist - 30.0 + totalRouteDist) % totalRouteDist),
         laneOffsetM: -0.8,
         speed: 7.8 // ~28 km/h
       },
       "v2v_truck_corridor": {
         vehicle_id: "v2v_truck_corridor",
-        label: "Commercial Freight Truck",
+        label: "Truck",
         role: "standard",
         coords: routeCoords,
         cumDists: cumRoute,
-        baseOffset: 50.0,
-        distM: (userDist + 50.0) % totalRouteDist,
+        baseOffset: 80.0,
+        distM: (userDist + 80.0) % totalRouteDist,
         laneOffsetM: 2.0,
         speed: 7.0 // ~25 km/h
-      },
-      "v2v_suv_traffic": {
-        vehicle_id: "v2v_suv_traffic",
-        label: "Compact SUV",
-        role: "standard",
-        coords: routeCoords,
-        cumDists: cumRoute,
-        baseOffset: 75.0,
-        distM: (userDist + 75.0) % totalRouteDist,
-        laneOffsetM: -1.2,
-        speed: 9.0 // ~32 km/h
-      },
-      "v2v_delivery_van": {
-        vehicle_id: "v2v_delivery_van",
-        label: "Delivery Van",
-        role: "standard",
-        coords: routeCoords,
-        cumDists: cumRoute,
-        baseOffset: 95.0,
-        distM: (userDist + 95.0) % totalRouteDist,
-        laneOffsetM: 1.5,
-        speed: 8.2 // ~30 km/h
       }
     };
 
@@ -1122,7 +1132,7 @@ class GoogleMapsAppController {
         // Keep vehicles dynamically centered within visible proximity of user
         const diff = v.distM - currentUserDist;
         if (diff > 120.0 || diff < -60.0 || v.distM > totalRouteDist || v.distM < 0) {
-          v.distM = (currentUserDist + (v.baseOffset || 25.0) + totalRouteDist) % totalRouteDist;
+          v.distM = (currentUserDist + (v.baseOffset || 35.0) + totalRouteDist) % totalRouteDist;
         }
 
         const pos = this._interpolateAlongPolyline(v.distM, v.coords, v.cumDists);
