@@ -55,6 +55,7 @@ class GoogleMapsAppController {
     this.lastAmbAlertTime = 0;
     this.lastSpokenHazardId = null;
     this.isAudioMuted = false;
+    this.emergencyContacts = [];
 
     // Communication Channels
     this.ws = null;
@@ -83,6 +84,9 @@ class GoogleMapsAppController {
 
     // 6. Bind UI Events
     this.bindEvents();
+
+    // 6b. Preload SOS Emergency Contacts
+    await this.loadEmergencyContacts();
 
     // 7. Start periodic 1.0-second telemetry broadcast (Ts = 1s, IEEE Table II)
     this.startTelemetryLoop();
@@ -202,7 +206,9 @@ class GoogleMapsAppController {
       if (sosLabel) sosLabel.textContent = 'ACTIVE';
       if (window.mapController) window.mapController.setSosBeacon(true);
 
-      // Trigger SOS on backend with real GPS coordinates
+      this._updateContactsBadge();
+
+      // Trigger SOS on backend with real GPS coordinates and configured contacts
       try {
         const resp = await fetch('/api/sos/trigger', {
           method: 'POST',
@@ -213,6 +219,7 @@ class GoogleMapsAppController {
             latitude: this.currentLat,
             longitude: this.currentLon,
             accuracy: this.currentAccuracy || 2.0,
+            contacts: this.emergencyContacts,
             message: "EMERGENCY: Immediate assistance required! Traveling alone."
           })
         });
@@ -229,7 +236,7 @@ class GoogleMapsAppController {
       if (sosDialog) sosDialog.style.display = 'flex';
 
       if (window.audioEngine) {
-        window.audioEngine.speak("Emergency SOS activated. Live location dispatched to police helpline and emergency guardians.", true);
+        window.audioEngine.speak(`Emergency SOS activated. Live location dispatched to police helpline and ${this.emergencyContacts.length} emergency contacts.`, true);
       }
     } else {
       if (sosBtn) sosBtn.classList.remove('active');
@@ -252,6 +259,149 @@ class GoogleMapsAppController {
   closeSOSDialog() {
     const sosDialog = document.getElementById('gmaps-sos-dialog');
     if (sosDialog) sosDialog.style.display = 'none';
+  }
+
+  // -------------------------------------------------------------
+  // SOS EMERGENCY CONTACTS MANAGEMENT & SETTINGS
+  // -------------------------------------------------------------
+  async loadEmergencyContacts() {
+    try {
+      const stored = localStorage.getItem('v2v_emergency_contacts');
+      if (stored) {
+        this.emergencyContacts = JSON.parse(stored);
+      } else {
+        const resp = await fetch('/api/sos/contacts');
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.contacts && data.contacts.length > 0) {
+            this.emergencyContacts = data.contacts;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load emergency contacts:", e);
+    }
+
+    if (!this.emergencyContacts || this.emergencyContacts.length === 0) {
+      this.emergencyContacts = [
+        { id: "c1", name: "Police Helpline", phone: "112", relationship: "Emergency Service", is_primary: true },
+        { id: "c2", name: "Family Guardian", phone: "+91 98401 22334", relationship: "Parent / Family", is_primary: false },
+        { id: "c3", name: "Emergency Contact", phone: "+91 94432 11223", relationship: "Friend / Relative", is_primary: false }
+      ];
+      this._persistContactsLocally();
+    }
+
+    this._updateContactsBadge();
+  }
+
+  _persistContactsLocally() {
+    try {
+      localStorage.setItem('v2v_emergency_contacts', JSON.stringify(this.emergencyContacts));
+    } catch (e) {}
+  }
+
+  async saveEmergencyContacts() {
+    this._persistContactsLocally();
+    this._updateContactsBadge();
+
+    try {
+      await fetch('/api/sos/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(this.emergencyContacts)
+      });
+    } catch (e) {}
+  }
+
+  _updateContactsBadge() {
+    const badge = document.getElementById('sos-contacts-dispatched-badge');
+    if (badge) {
+      badge.textContent = `Dispatched (${this.emergencyContacts.length} Contacts)`;
+    }
+  }
+
+  openSettingsDialog() {
+    const dialog = document.getElementById('gmaps-settings-dialog');
+    if (dialog) {
+      dialog.style.display = 'flex';
+      this.renderEmergencyContacts();
+    }
+  }
+
+  closeSettingsDialog() {
+    const dialog = document.getElementById('gmaps-settings-dialog');
+    if (dialog) dialog.style.display = 'none';
+  }
+
+  renderEmergencyContacts() {
+    const listEl = document.getElementById('sos-contacts-list');
+    if (!listEl) return;
+
+    if (!this.emergencyContacts || this.emergencyContacts.length === 0) {
+      listEl.innerHTML = '<div style="color:#64748b; font-size:12px; padding:8px;">No emergency contacts added yet. Add at least one contact below.</div>';
+      return;
+    }
+
+    listEl.innerHTML = this.emergencyContacts.map(c => `
+      <div class="sos-contact-card">
+        <div class="sos-contact-info">
+          <div class="sos-contact-header-line">
+            <span class="sos-contact-name">${this._escapeHtml(c.name)}</span>
+            ${c.is_primary ? '<span class="sos-primary-tag">Primary</span>' : ''}
+          </div>
+          <div class="sos-contact-detail">${this._escapeHtml(c.relationship || 'Contact')} • ${this._escapeHtml(c.phone)}</div>
+        </div>
+        <button class="sos-contact-delete" onclick="appController.deleteEmergencyContact('${c.id}')" title="Delete contact">✕</button>
+      </div>
+    `).join('');
+  }
+
+  _escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  async handleAddContactSubmit() {
+    const nameInput = document.getElementById('sos-contact-name');
+    const phoneInput = document.getElementById('sos-contact-phone');
+    const relationInput = document.getElementById('sos-contact-relation');
+    const primaryInput = document.getElementById('sos-contact-primary');
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    const phone = phoneInput ? phoneInput.value.trim() : '';
+    const relationship = relationInput ? relationInput.value : 'Guardian';
+    const isPrimary = primaryInput ? primaryInput.checked : false;
+
+    if (!name || !phone) return;
+
+    if (isPrimary) {
+      this.emergencyContacts.forEach(c => { c.is_primary = false; });
+    }
+
+    const newContact = {
+      id: 'c_' + Date.now().toString(36),
+      name: name,
+      phone: phone,
+      relationship: relationship,
+      is_primary: isPrimary
+    };
+
+    this.emergencyContacts.push(newContact);
+    await this.saveEmergencyContacts();
+    this.renderEmergencyContacts();
+
+    if (nameInput) nameInput.value = '';
+    if (phoneInput) phoneInput.value = '';
+    if (primaryInput) primaryInput.checked = false;
+  }
+
+  async deleteEmergencyContact(id) {
+    this.emergencyContacts = this.emergencyContacts.filter(c => c.id !== id);
+    if (this.emergencyContacts.length > 0 && !this.emergencyContacts.some(c => c.is_primary)) {
+      this.emergencyContacts[0].is_primary = true;
+    }
+    await this.saveEmergencyContacts();
+    this.renderEmergencyContacts();
   }
 
   evaluateAmbulanceClearanceAlerts(alerts) {
@@ -1081,7 +1231,7 @@ class GoogleMapsAppController {
     const chip = document.getElementById('btn-toggle-collision-sim');
     const chipLabel = document.getElementById('sim-chip-label');
     if (chip) chip.classList.add('active');
-    if (chipLabel) chipLabel.textContent = '⏹ Cancel Simulation';
+    if (chipLabel) chipLabel.textContent = 'Cancel Simulation';
 
     const hud = document.getElementById('gmaps-collision-inspector-hud');
     if (hud) hud.style.display = 'block';
@@ -1385,7 +1535,7 @@ class GoogleMapsAppController {
     const chip = document.getElementById('btn-toggle-collision-sim');
     const chipLabel = document.getElementById('sim-chip-label');
     if (chip) chip.classList.remove('active');
-    if (chipLabel) chipLabel.textContent = '⚡ Simulate Route Collision';
+    if (chipLabel) chipLabel.textContent = 'Simulate Route Collision';
 
     const hud = document.getElementById('gmaps-collision-inspector-hud');
     if (hud) hud.style.display = 'none';
