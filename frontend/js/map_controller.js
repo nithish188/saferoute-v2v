@@ -108,6 +108,8 @@ class GoogleMapController {
   // -------------------------------------------------------------
   updateHostPosition(lat, lon, heading = 0, accuracy = 3.0) {
     if (!this.map) return;
+    this.hostLat = lat;
+    this.hostLon = lon;
 
     // When accident scene is frozen, keep host vehicle in its collided state!
     if (this.isAccidentFrozen) {
@@ -240,6 +242,16 @@ class GoogleMapController {
     }
   }
 
+  _haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
   // -------------------------------------------------------------
   // CONNECTED V2V ROAD VEHICLES (Real-time moving vehicles on route)
   // -------------------------------------------------------------
@@ -279,9 +291,15 @@ class GoogleMapController {
 
     for (const [vid, v] of Object.entries(vehicles)) {
       if (vid === myDeviceId) continue; // Don't draw our own device as another car
+      if (!v || v.latitude === undefined || v.longitude === undefined) continue;
 
-      // Strict radius check (500m standard, 750m in Ambulance Mode)
-      if (v.distance_from_host_m !== undefined && v.distance_from_host_m > maxRadius) {
+      // Strict radius check: calculate distance from host if host coordinates are known
+      let distM = v.distance_from_host_m;
+      if (this.hostLat && this.hostLon && v.latitude && v.longitude) {
+        distM = this._haversine(this.hostLat, this.hostLon, v.latitude, v.longitude);
+      }
+      const isSimVehicle = typeof vid === 'string' && vid.startsWith('v2v_');
+      if (!isSimVehicle && distM !== undefined && distM > maxRadius) {
         continue;
       }
 
@@ -351,6 +369,22 @@ class GoogleMapController {
   // Implements Section IV-E, IV-F: Vector intersection and visual warning
   // Collision detection is strictly performed between "Me" and nearby vehicle
   // -------------------------------------------------------------
+  showCollisionPrediction(impactPos, alert, vehicles) {
+    if (this.accidentImpactMarker) return;
+    const impactLat = Array.isArray(impactPos) ? impactPos[0] : impactPos.lat;
+    const impactLon = Array.isArray(impactPos) ? impactPos[1] : impactPos.lon;
+    const alerts = [
+      {
+        level: (alert && alert.level) || 'warning',
+        t_star: (alert && alert.t_star) || 5,
+        source_vehicle_id: (alert && alert.source_vehicle_id) || 'v2v_car_nearby',
+        target_vehicle_id: (alert && alert.target_vehicle_id) || '',
+        impact_point: { lat: impactLat, lon: impactLon }
+      }
+    ];
+    this.renderCollisionPrediction(alerts, vehicles, (alert && alert.target_vehicle_id) || '');
+  }
+
   renderCollisionPrediction(alerts, vehicles, hostDeviceId) {
     if (this.accidentImpactMarker) return; // Keep persistent accident wreckage/freeze marker
     this.clearCollisionPrediction();
@@ -441,7 +475,7 @@ class GoogleMapController {
     }
   }
 
-  showAccidentCollisionScene(hostLat, hostLon, hostHeading, otherLat, otherLon, otherHeading, otherLabel = "Red Hatchback (Collided)") {
+  showAccidentCollisionScene(hostLat, hostLon, hostHeading, otherLat, otherLon, otherHeading, otherLabel = "Red Hatchback (Collided)", impactLat = null, impactLon = null) {
     this.isAccidentFrozen = true;
     this.clearCollisionPrediction();
     this.clearAccidentImpactMarker();
@@ -512,9 +546,9 @@ class GoogleMapController {
       this.collidedOtherMarker.setZIndexOffset(3550);
     }
 
-    // 3. Central Crash Impact Pin at collision seam
-    const midLat = (hostLat + otherLat) / 2.0;
-    const midLon = (hostLon + otherLon) / 2.0;
+    // 3. Central Crash Impact Pin placed directly at collision intersection
+    const finalImpactLat = (impactLat !== null && impactLat !== undefined) ? impactLat : ((hostLat + otherLat) / 2.0);
+    const finalImpactLon = (impactLon !== null && impactLon !== undefined) ? impactLon : ((hostLon + otherLon) / 2.0);
     const crashHtml = `
       <div class="crash-impact-pin">
         <div class="crash-impact-ring"></div>
@@ -528,9 +562,9 @@ class GoogleMapController {
       iconSize: [44, 44],
       iconAnchor: [22, 22]
     });
-    this.accidentImpactMarker = L.marker([midLat, midLon], { icon: crashIcon, zIndexOffset: 4000 }).addTo(this.map);
+    this.accidentImpactMarker = L.marker([finalImpactLat, finalImpactLon], { icon: crashIcon, zIndexOffset: 4000 }).addTo(this.map);
 
-    this.map.panTo([midLat, midLon], { animate: true, duration: 0.5 });
+    this.map.panTo([finalImpactLat, finalImpactLon], { animate: true, duration: 0.5 });
   }
 
   showAccidentImpactMarker(lat, lon) {
