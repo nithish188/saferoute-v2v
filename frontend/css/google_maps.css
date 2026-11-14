@@ -1790,3 +1790,215 @@ body, html {
   color: #ef4444;
   background: #fee2e2;
 }
+
+/* ============================================================ */
+/* ONE-TIME VEHICLE LOGIN OVERLAY STYLES                        */
+/* ============================================================ */
+.login-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.login-brand {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.login-logo-circle {
+  width: 56px;
+  height: 56px;
+  background: #e8f0fe;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.2);
+}
+
+.login-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a73e8;
+  letter-spacing: -0.3px;
+  font-family: 'Google Sans', -apple-system, Roboto, sans-serif;
+}
+
+.login-subtitle {
+  font-size: 12px;
+  color: #5f6368;
+  margin-top: 3px;
+}
+
+.login-form-group {
+  margin-bottom: 16px;
+}
+
+.login-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.login-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #1e293b;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  outline: none;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+}
+
+.login-input:focus {
+  border-color: #1a73e8;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
+}
+
+.login-help-text {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.vehicle-type-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.vehicle-type-card {
+  padding: 10px 4px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.vehicle-type-card:hover {
+  border-color: #93c5fd;
+  background: #f0f7ff;
+}
+
+.vehicle-type-card.active {
+  border-color: #1a73e8;
+  background: #e8f0fe;
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.2);
+}
+
+.vehicle-type-card.active#vtype-card-ambulance {
+  border-color: #dc2626;
+  background: #fef2f2;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
+}
+
+.v-type-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.v-type-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.v-type-sub {
+  font-size: 10px;
+  color: #64748b;
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
+.login-submit-btn {
+  width: 100%;
+  height: 48px;
+  background: #1a73e8;
+  color: #ffffff;
+  border: none;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.35);
+  transition: all 0.2s ease;
+  margin-top: 18px;
+}
+
+.login-submit-btn:hover {
+  background: #1557b0;
+  box-shadow: 0 4px 12px rgba(26, 115, 232, 0.45);
+}
+
+.login-submit-btn:active {
+  transform: scale(0.98);
+}
+
+.login-footer-note {
+  font-size: 11px;
+  color: #64748b;
+  text-align: center;
+  margin-top: 12px;
+}
+
+.gmaps-btn-danger-outline {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  background: #fef2f2;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.gmaps-btn-danger-outline:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+}

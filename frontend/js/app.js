@@ -24,9 +24,12 @@ if (isMobileApk) {
 
 class GoogleMapsAppController {
   constructor() {
-    // Unique device identity for multi-user V2V network
-    this.deviceId = this._getOrCreateDeviceId();
-    this.deviceLabel = `User (${this.deviceId.slice(-4).toUpperCase()})`;
+    // User Vehicle Profile (One-time Login)
+    this.userProfile = this.loadUserProfile();
+    this.vehicleNumber = this.userProfile ? this.userProfile.vehicleNumber : '';
+    this.vehicleType = this.userProfile ? this.userProfile.vehicleType : 'car'; // 'car', 'bike', 'ambulance'
+    this.deviceId = this.userProfile ? this.userProfile.deviceId : ('v2v_pending_' + Math.floor(1000 + Math.random() * 9000).toString(16));
+    this.deviceLabel = this.userProfile ? `${this.vehicleNumber} (${this.vehicleType.toUpperCase()})` : 'Unregistered Vehicle';
     this.userRole = 'standard'; // 'standard', 'ambulance', 'women_safety'
 
     // Live Telemetry State
@@ -42,14 +45,14 @@ class GoogleMapsAppController {
     this.destinations = [];
     this.selectedDestination = null;
     this.activeRoute = null;
-    this.selectedTravelMode = 'driving';
+    this.selectedTravelMode = (this.vehicleType === 'bike') ? 'motorcycle' : 'driving';
     this.isNavigating = false;
     this.routeCollisionTimer = null;
     this.nearbyVehiclesTimer = null; // Real-time other vehicles movement timer
     this.nearbyVehicles = {};
     this.isCollisionSimActive = false;
     this.collisionSimTimer = null;
-    this.isAmbulanceMode = false;
+    this.isAmbulanceMode = false; // Always starts inactive; ambulance operations perform ONLY when button pressed
     this.isSosActive = false;
     this.analysisRadiusM = 500.0;
     this.lastAmbAlertTime = 0;
@@ -61,17 +64,23 @@ class GoogleMapsAppController {
     this.ws = null;
     this.telemetryIntervalId = null;
     this.searchDebounceTimer = null;
+    this.wsPingTimer = null;
+    this.stateSyncTimer = null;
   }
 
   async init() {
-    console.log(`[Google Maps V2V] Initializing Android App for Device: ${this.deviceId}`);
+    console.log(`[Google Maps V2V] Initializing Android App for Vehicle: ${this.vehicleNumber || 'Unregistered'}`);
 
     // 1. Initialize Leaflet Map
     window.mapController.init(this.currentLat, this.currentLon);
     window.mapController.updateHostPosition(this.currentLat, this.currentLon, this.currentHeading, this.currentAccuracy);
 
-    // 2. Setup Device Profile in UI
-    this._updateProfileUI();
+    // 2. Check Profile / Show Login if not registered
+    if (!this.userProfile) {
+      this.showLoginOverlay();
+    } else {
+      this.applyUserProfile(this.userProfile, false);
+    }
 
     // 3. Connect to Backend WebSocket stream with automatic HTTP fallback
     this.setupWebSocket();
@@ -101,16 +110,197 @@ class GoogleMapsAppController {
   }
 
   // -------------------------------------------------------------
-  // DEVICE & PROFILE MANAGEMENT
+  // USER PROFILE & ONE-TIME VEHICLE REGISTRATION (LOGIN / LOGOUT)
   // -------------------------------------------------------------
-  _getOrCreateDeviceId() {
-    let id = localStorage.getItem('v2v_user_device_id');
-    if (!id) {
-      const randHex = Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
-      id = `device_${randHex}`;
-      localStorage.setItem('v2v_user_device_id', id);
+  loadUserProfile() {
+    try {
+      const stored = localStorage.getItem('v2v_user_profile');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (e) {
+      console.warn("Failed to load user profile:", e);
     }
-    return id;
+    return null;
+  }
+
+  showLoginOverlay() {
+    const overlay = document.getElementById('gmaps-login-overlay');
+    if (overlay) {
+      overlay.style.display = 'flex';
+      const input = document.getElementById('login-vehicle-num');
+      if (input) {
+        setTimeout(() => input.focus(), 150);
+      }
+    }
+  }
+
+  hideLoginOverlay() {
+    const overlay = document.getElementById('gmaps-login-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  selectVehicleTypeOption(type) {
+    ['car', 'bike', 'ambulance'].forEach(t => {
+      const card = document.getElementById(`vtype-card-${t}`);
+      if (card) {
+        if (t === type) card.classList.add('active');
+        else card.classList.remove('active');
+      }
+    });
+    const input = document.getElementById('login-selected-type');
+    if (input) input.value = type;
+  }
+
+  _generateUniqueDeviceId(vehicleNumber, vehicleType) {
+    const cleanPlate = (vehicleNumber || 'VEH').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const randHex1 = Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+    const randHex2 = Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+    const tsCode = Date.now().toString(36).slice(-4);
+    return `v2v_${vehicleType}_${cleanPlate}_${randHex1}${randHex2}_${tsCode}`;
+  }
+
+  handleLoginSubmit() {
+    const numInput = document.getElementById('login-vehicle-num');
+    const typeInput = document.getElementById('login-selected-type');
+    let vehicleNum = (numInput ? numInput.value.trim().toUpperCase() : '') || 'TN 38 AB 1234';
+    let vehicleType = (typeInput ? typeInput.value : 'car') || 'car';
+
+    // Generate distinct unique ID per user
+    const deviceId = this._generateUniqueDeviceId(vehicleNum, vehicleType);
+
+    const profile = {
+      vehicleNumber: vehicleNum,
+      vehicleType: vehicleType,
+      deviceId: deviceId,
+      loginTimestamp: Date.now()
+    };
+
+    localStorage.setItem('v2v_user_profile', JSON.stringify(profile));
+    localStorage.setItem('v2v_user_device_id', deviceId);
+
+    this.applyUserProfile(profile, true);
+    this.hideLoginOverlay();
+  }
+
+  handleLogout() {
+    if (confirm("Log out and change vehicle registration?")) {
+      // Deactivate ambulance mode if active
+      if (this.isAmbulanceMode) {
+        this.isAmbulanceMode = false;
+        fetch('/api/ambulance/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vehicle_id: this.deviceId, active: false })
+        }).catch(() => {});
+      }
+
+      // Stop collision sim or route if running
+      if (this.isCollisionSimActive) this.toggleCollisionSimulation();
+      if (this.isNavigating) this.cancelActiveRoute();
+
+      localStorage.removeItem('v2v_user_profile');
+      this.userProfile = null;
+      this.vehicleNumber = '';
+      this.vehicleType = 'car';
+
+      this.closeProfileDialog();
+      this.closeSettingsDialog();
+
+      // Reset login form
+      const numInput = document.getElementById('login-vehicle-num');
+      if (numInput) numInput.value = '';
+      this.selectVehicleTypeOption('car');
+
+      this.showLoginOverlay();
+    }
+  }
+
+  applyUserProfile(profile, isFirstLogin = false) {
+    this.userProfile = profile;
+    this.vehicleNumber = profile.vehicleNumber;
+    this.vehicleType = profile.vehicleType; // 'car', 'bike', 'ambulance'
+    this.deviceId = profile.deviceId;
+    this.deviceLabel = `${this.vehicleNumber} (${this.vehicleType.toUpperCase()})`;
+
+    // Reset ambulance mode state
+    // "fo ambulance vehicle, the operations needs to perform only when the ambulance mode button pressed"
+    this.isAmbulanceMode = false;
+    this.userRole = 'standard';
+    this.analysisRadiusM = 500.0;
+
+    // Apply vehicle-type specific UI rules
+    const ambChip = document.getElementById('chip-ambulance-mode');
+    const ambChipText = document.getElementById('chip-ambulance-text');
+    const btnAmbLayer = document.getElementById('btn-mode-ambulance');
+    const btnStdLayer = document.getElementById('btn-mode-standard');
+
+    if (this.vehicleType === 'ambulance') {
+      // Ambulance vehicle type:
+      // Show ambulance button in top chips and layers
+      if (ambChip) {
+        ambChip.style.display = 'inline-flex';
+        ambChip.classList.remove('active');
+      }
+      if (ambChipText) {
+        ambChipText.textContent = 'Ambulance Mode (1km)';
+      }
+      if (btnAmbLayer) btnAmbLayer.style.display = 'inline-flex';
+      if (btnStdLayer) {
+        btnStdLayer.style.display = 'inline-flex';
+        btnStdLayer.classList.add('active');
+        btnStdLayer.textContent = 'Standby (500m)';
+      }
+
+      this.selectedTravelMode = 'driving';
+    } else {
+      // Car or Bike:
+      // "for car and bike, it does not contains any ambulance parameter. the ambulance's parameters only show, when the type of vehicle in login is ambulance. now it only shows normal vehicle or emergency vehicle not both for one user."
+      if (ambChip) ambChip.style.display = 'none';
+      if (btnAmbLayer) btnAmbLayer.style.display = 'none';
+      if (btnStdLayer) {
+        btnStdLayer.style.display = 'inline-flex';
+        btnStdLayer.classList.add('active');
+        btnStdLayer.textContent = (this.vehicleType === 'bike') ? '🏍️ Motorcycle (500m)' : '🚗 Passenger Car (500m)';
+      }
+
+      if (this.vehicleType === 'bike') {
+        this.selectedTravelMode = 'motorcycle';
+      } else {
+        this.selectedTravelMode = 'driving';
+      }
+    }
+
+    // Set travel mode tab
+    this.setTravelMode(this.selectedTravelMode);
+
+    // Update Profile UI
+    this._updateProfileUI();
+
+    // Update Radar HUD and Map Zone
+    this._updateRadarHUDAndMap();
+
+    // Re-identify to WebSocket stream if active
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: "IDENTIFY",
+        vehicle_id: this.deviceId,
+        label: this.deviceLabel,
+        role: this.userRole,
+        vehicle_type: this.vehicleType,
+        vehicle_number: this.vehicleNumber
+      }));
+    }
+
+    // Immediate telemetry broadcast
+    this.sendTelemetry();
+
+    if (isFirstLogin && window.audioEngine) {
+      const typeSpoken = (this.vehicleType === 'ambulance')
+        ? 'Emergency Ambulance'
+        : (this.vehicleType === 'bike' ? 'Motorcycle' : 'Passenger Car');
+      window.audioEngine.speak(`Logged in as ${typeSpoken}, registration ${this.vehicleNumber}. SafeRoute network ready.`);
+    }
   }
 
   _updateProfileUI() {
@@ -118,75 +308,113 @@ class GoogleMapsAppController {
     const diagAvatar = document.getElementById('dialog-avatar');
     const diagLabel = document.getElementById('dialog-device-label');
     const diagId = document.getElementById('dialog-device-id');
+    const diagVehNum = document.getElementById('dialog-vehicle-num');
+    const diagVehType = document.getElementById('dialog-vehicle-type');
 
-    if (avatarEl) avatarEl.textContent = 'U';
-    if (diagAvatar) diagAvatar.textContent = 'U';
-    if (diagLabel) diagLabel.textContent = this.deviceLabel;
+    let avatarSymbol = '🚗';
+    let typeLabel = 'Passenger Car';
+    if (this.vehicleType === 'ambulance') {
+      avatarSymbol = '🚑';
+      typeLabel = 'Emergency Ambulance';
+    } else if (this.vehicleType === 'bike') {
+      avatarSymbol = '🏍️';
+      typeLabel = 'Motorcycle / 2-Wheeler';
+    }
+
+    if (avatarEl) avatarEl.textContent = avatarSymbol;
+    if (diagAvatar) diagAvatar.textContent = avatarSymbol;
+    if (diagLabel) diagLabel.textContent = this.deviceLabel || 'SafeRoute User';
     if (diagId) diagId.textContent = `V2V ID: ${this.deviceId}`;
+    if (diagVehNum) diagVehNum.textContent = this.vehicleNumber || 'Unregistered';
+    if (diagVehType) diagVehType.textContent = typeLabel;
+  }
+
+  _updateRadarHUDAndMap() {
+    // Update Radar Badge on HUD
+    const radarBadges = document.querySelectorAll('.nav-v2v-radar-badge, #nav-v2v-radar-badge');
+    radarBadges.forEach(b => {
+      b.innerHTML = this.isAmbulanceMode
+        ? `<span class="radar-pulse-dot" style="background:#ef4444;"></span> 1KM AMBULANCE`
+        : `<span class="radar-pulse-dot"></span> 500M V2V`;
+    });
+
+    const diagRadar = document.getElementById('dialog-radar-range');
+    if (diagRadar) {
+      diagRadar.textContent = this.isAmbulanceMode
+        ? '1000m Priority Clearance Zone'
+        : '500m Predictive Zone';
+    }
+
+    // Update Map Controller Radar Circle to 1000m / 500m
+    if (window.mapController) {
+      window.mapController.updateAnalysisZone(
+        this.currentLat,
+        this.currentLon,
+        this.analysisRadiusM,
+        this.isAmbulanceMode
+      );
+    }
   }
 
   setUserRole(role) {
+    if (this.vehicleType !== 'ambulance') {
+      // Civilian cars and bikes cannot switch to ambulance
+      return;
+    }
+
     if (role === 'ambulance') {
       if (!this.isAmbulanceMode) this.toggleAmbulanceMode();
-      return;
     } else {
       if (this.isAmbulanceMode) this.toggleAmbulanceMode();
     }
-
-    this.userRole = role;
-    document.querySelectorAll('.v2v-mode-btn').forEach(b => b.classList.remove('active'));
-    const btn = document.getElementById(`btn-mode-${role}`);
-    if (btn) btn.classList.add('active');
-
-    // Transmit role update immediately
-    this.sendTelemetry();
   }
 
   toggleAmbulanceMode() {
+    if (this.vehicleType !== 'ambulance') {
+      console.warn("Ambulance mode cannot be toggled on civilian vehicles.");
+      return;
+    }
+
     this.isAmbulanceMode = !this.isAmbulanceMode;
     this.userRole = this.isAmbulanceMode ? 'ambulance' : 'standard';
-    this.analysisRadiusM = this.isAmbulanceMode ? 750.0 : 500.0;
+    this.analysisRadiusM = this.isAmbulanceMode ? 1000.0 : 500.0; // 1km priority radius!
 
     // Update Top Chip UI
     const chip = document.getElementById('chip-ambulance-mode');
     const chipText = document.getElementById('chip-ambulance-text');
     if (chip) chip.classList.toggle('active', this.isAmbulanceMode);
-    if (chipText) chipText.textContent = this.isAmbulanceMode ? 'Ambulance (750m Active)' : 'Ambulance Mode (750m)';
-
-    // Update Layers sheet selection
-    document.querySelectorAll('.v2v-mode-btn').forEach(b => b.classList.remove('active'));
-    const btn = document.getElementById(this.isAmbulanceMode ? 'btn-mode-ambulance' : 'btn-mode-standard');
-    if (btn) btn.classList.add('active');
-
-    // Update Radar Badge on HUD
-    const radarBadges = document.querySelectorAll('.nav-v2v-radar-badge, #nav-v2v-radar-badge');
-    radarBadges.forEach(b => {
-      b.innerHTML = this.isAmbulanceMode
-        ? `<span class="radar-pulse-dot" style="background:#ef4444;"></span> 750M AMBULANCE`
-        : `<span class="radar-pulse-dot"></span> 500M V2V`;
-    });
-
-    // Update Map Controller Radar Circle to 750m
-    if (window.mapController) {
-      window.mapController.updateAnalysisZone(this.currentLat, this.currentLon, this.analysisRadiusM, this.isAmbulanceMode);
+    if (chipText) {
+      chipText.textContent = this.isAmbulanceMode ? 'Ambulance (1km Active)' : 'Ambulance Mode (1km)';
     }
 
-    // Inform backend of ambulance toggle
+    // Update Layers sheet selection
+    const btnAmb = document.getElementById('btn-mode-ambulance');
+    const btnStd = document.getElementById('btn-mode-standard');
+    if (btnAmb && btnStd) {
+      btnAmb.classList.toggle('active', this.isAmbulanceMode);
+      btnStd.classList.toggle('active', !this.isAmbulanceMode);
+    }
+
+    // Update HUD & Map
+    this._updateRadarHUDAndMap();
+
+    // Inform backend of ambulance toggle with 1000m (1km) radius
     fetch('/api/ambulance/toggle', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         vehicle_id: this.deviceId,
-        active: this.isAmbulanceMode
+        active: this.isAmbulanceMode,
+        radius_m: this.analysisRadiusM
       })
     }).catch(() => {});
 
     // Audio guidance
     if (window.audioEngine) {
       if (this.isAmbulanceMode) {
-        window.audioEngine.speak("Ambulance mode activated. Analysis radius extended to 750 meters. Broadcasting continuous lane clearance alerts to vehicles along the route.");
+        window.audioEngine.speak("Ambulance priority clearance active. Analysis radius extended to 1 kilometer. Broadcasting route clearance.");
       } else {
-        window.audioEngine.speak("Ambulance mode deactivated. Returned to standard 500 meter radar.");
+        window.audioEngine.speak("Ambulance priority mode deactivated. Returned to standby 500 meter radar.");
       }
     }
 
@@ -421,7 +649,7 @@ class GoogleMapsAppController {
       if (titleEl) titleEl.textContent = '🚨 EMERGENCY AMBULANCE APPROACHING';
       if (descEl) descEl.textContent = ambAlert.message || 'Pull over to the left and clear the lane immediately!';
       if (pillsEl) {
-        pillsEl.innerHTML = `<span class="hazard-pill" style="background:#fee2e2; color:#b91c1c;">750M ROUTE CLEARANCE</span>`;
+        pillsEl.innerHTML = `<span class="hazard-pill" style="background:#fee2e2; color:#b91c1c;">1KM ROUTE CLEARANCE</span>`;
       }
       banner.style.display = 'flex';
       banner.style.borderLeftColor = '#dc2626';
@@ -457,8 +685,11 @@ class GoogleMapsAppController {
         this.ws.send(JSON.stringify({
           type: "IDENTIFY",
           device_id: this.deviceId,
+          vehicle_id: this.deviceId,
           label: this.deviceLabel,
-          role: this.userRole
+          role: this.userRole,
+          vehicle_type: this.vehicleType,
+          vehicle_number: this.vehicleNumber
         }));
 
         // Keepalive heartbeat
@@ -528,7 +759,7 @@ class GoogleMapsAppController {
       const vehicles = data.vehicles || {};
       const alerts = data.alerts || [];
 
-      // Update analysis radius dynamically (750m in Ambulance Mode, 500m in Standard Mode)
+      // Update analysis radius dynamically (1000m in Ambulance Mode, 500m in Standard Mode)
       if (data.analysis_radius_m) {
         this.analysisRadiusM = data.analysis_radius_m;
         if (window.mapController) {
@@ -693,6 +924,8 @@ class GoogleMapsAppController {
       speed: this.currentSpeed,
       heading: this.currentHeading,
       role: this.userRole,
+      vehicle_type: this.vehicleType,
+      vehicle_number: this.vehicleNumber,
       ambulance_active: this.isAmbulanceMode,
       sos_active: this.isSosActive
     };

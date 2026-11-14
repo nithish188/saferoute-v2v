@@ -26,7 +26,7 @@ class AmbulanceClearanceService:
                  we: float = AMBULANCE_CORRIDOR_HALF_WIDTH_WE,
                  ref_lat: float = DEFAULT_REF_LAT,
                  ref_lon: float = DEFAULT_REF_LON):
-        self.le = le  # 750 m corridor length ahead in ambulance mode
+        self.le = le  # 1000 m (1 km) corridor length ahead in ambulance mode
         self.we = we  # 30 m corridor half-width
         self.ref_lat = ref_lat
         self.ref_lon = ref_lon
@@ -37,7 +37,7 @@ class AmbulanceClearanceService:
                            current_time: float = None,
                            route_coords: Optional[List[List[float]]] = None) -> Tuple[List[Alert], Dict[str, Any]]:
         """
-        Calculates vehicles directly inside the ambulance corridor and along the ambulance's route within 750m.
+        Calculates vehicles directly inside the ambulance corridor and along the ambulance's route within 1km (1000m).
         Generates continuous clearance alerts for all vehicles in the ambulance path.
         """
         if current_time is None:
@@ -70,11 +70,11 @@ class AmbulanceClearanceService:
             is_in_path = False
             dist_ahead = sj
 
-            # Condition A: Straight-ahead 750m corridor
+            # Condition A: Straight-ahead 1000m (1km) corridor
             if 0.0 < sj <= self.le and abs(lj) <= self.we:
                 is_in_path = True
                 dist_ahead = sj
-            # Condition B: If ambulance has an active planned route, check if vehicle is on route ahead up to 750m
+            # Condition B: If ambulance has an active planned route, check if vehicle is on route ahead up to 1000m (1km)
             elif route_coords and len(route_coords) > 1:
                 dist_direct = haversine_distance(ambulance.latitude, ambulance.longitude, vj.latitude, vj.longitude)
                 if dist_direct <= self.le:

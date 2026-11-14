@@ -157,7 +157,7 @@ class GoogleMapController {
       this.hostMarker.setIcon(puckIcon);
     }
 
-    // Update V2V Analysis Zone (500m standard, 750m in Ambulance Mode)
+    // Update V2V Analysis Zone (500m standard, 1000m in Ambulance Mode)
     this.updateAnalysisZone(lat, lon, this.analysisRadiusM || 500.0, this.isAmbulanceMode || false);
 
     // Update compass needle rotation
@@ -168,7 +168,7 @@ class GoogleMapController {
   }
 
   // -------------------------------------------------------------
-  // V2V RADAR ANALYSIS ZONE (500m Standard / 750m Ambulance Mode)
+  // V2V RADAR ANALYSIS ZONE (500m Standard / 1000m Ambulance Mode)
   // -------------------------------------------------------------
   updateAnalysisZone(lat, lon, radiusM = 500.0, isAmbulance = false) {
     if (!this.map) return;
@@ -273,7 +273,7 @@ class GoogleMapController {
       return;
     }
 
-    // Dynamic radius check: 750m in Ambulance Mode, 500m in Standard Mode
+    // Dynamic radius check: 1000m (1km) in Ambulance Mode, 500m in Standard Mode
     const maxRadius = this.analysisRadiusM || 500.0;
 
     // Identify which vehicles are part of an active collision alert

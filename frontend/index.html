@@ -29,6 +29,66 @@
 </head>
 <body>
   <div id="app-container">
+    <!-- ============================================================ -->
+    <!-- ONE-TIME VEHICLE LOGIN OVERLAY                               -->
+    <!-- ============================================================ -->
+    <div id="gmaps-login-overlay" class="login-overlay" style="display:none;">
+      <div class="login-card">
+        <div class="login-brand">
+          <div class="login-logo-circle">
+            <svg viewBox="0 0 24 24" width="30" height="30" fill="#1a73e8">
+              <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+            </svg>
+          </div>
+          <div class="login-title">SafeRoute V2V</div>
+          <div class="login-subtitle">Intelligent V2V Collision & Telematics Network</div>
+        </div>
+
+        <form id="v2v-login-form" onsubmit="event.preventDefault(); appController.handleLoginSubmit();">
+          <div class="login-form-group">
+            <label class="login-label" for="login-vehicle-num">Vehicle Registration Number</label>
+            <input type="text" id="login-vehicle-num" class="login-input" placeholder="e.g. TN 38 AB 1234" autocomplete="off" required oninput="this.value = this.value.toUpperCase()">
+            <div class="login-help-text">Enter your official vehicle number plate</div>
+          </div>
+
+          <div class="login-form-group">
+            <label class="login-label">Vehicle Type</label>
+            <div class="vehicle-type-selector">
+              <div class="vehicle-type-card active" id="vtype-card-car" onclick="appController.selectVehicleTypeOption('car')">
+                <div class="v-type-icon">🚗</div>
+                <div class="v-type-name">Car</div>
+                <div class="v-type-sub">Passenger Car</div>
+              </div>
+
+              <div class="vehicle-type-card" id="vtype-card-bike" onclick="appController.selectVehicleTypeOption('bike')">
+                <div class="v-type-icon">🏍️</div>
+                <div class="v-type-name">Bike</div>
+                <div class="v-type-sub">2-Wheeler</div>
+              </div>
+
+              <div class="vehicle-type-card" id="vtype-card-ambulance" onclick="appController.selectVehicleTypeOption('ambulance')">
+                <div class="v-type-icon">🚑</div>
+                <div class="v-type-name">Ambulance</div>
+                <div class="v-type-sub">Emergency (1km)</div>
+              </div>
+            </div>
+            <input type="hidden" id="login-selected-type" value="car">
+          </div>
+
+          <button type="submit" class="login-submit-btn">
+            <span>Enter SafeRoute V2V</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+            </svg>
+          </button>
+
+          <div class="login-footer-note">
+            🔒 One-time login. Saved securely until you choose to log out.
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Fullscreen Map Canvas -->
     <div id="map"></div>
 
@@ -71,8 +131,9 @@
 
       <!-- Quick Category Filter Chips (Google Maps Android) -->
       <div class="gmaps-chips-scroll" id="gmaps-chips-scroll">
-        <button class="gmaps-chip gmaps-chip-ambulance" id="chip-ambulance-mode" onclick="appController.toggleAmbulanceMode()" title="Toggle Ambulance Mode (Expands Analysis Zone to 750m & Broadcasts Continuous Route Clearance)">
-          <span class="chip-icon">🚑</span> <span id="chip-ambulance-text">Ambulance Mode (750m)</span>
+        <!-- Ambulance Mode Chip: ONLY shown for Ambulance vehicle type, hidden for Car/Bike -->
+        <button class="gmaps-chip gmaps-chip-ambulance" id="chip-ambulance-mode" onclick="appController.toggleAmbulanceMode()" title="Toggle Ambulance Mode (1km Clearance Broadcast)" style="display:none;">
+          <span class="chip-icon">🚑</span> <span id="chip-ambulance-text">Ambulance Mode (1km)</span>
         </button>
         <button class="gmaps-chip" onclick="appController.searchQuickCategory('Petrol')">
           <span class="chip-icon">⛽</span> Petrol
@@ -328,7 +389,7 @@
       <div class="modal-title" style="margin-top:14px;">Vehicle Priority Mode</div>
       <div class="v2v-mode-selector">
         <button class="v2v-mode-btn active" id="btn-mode-standard" onclick="appController.setUserRole('standard')">🚗 Standard (500m)</button>
-        <button class="v2v-mode-btn" id="btn-mode-ambulance" onclick="appController.setUserRole('ambulance')">🚑 Ambulance (750m)</button>
+        <button class="v2v-mode-btn" id="btn-mode-ambulance" onclick="appController.setUserRole('ambulance')">🚑 Ambulance (1km Priority)</button>
       </div>
     </div>
 
@@ -380,6 +441,14 @@
         </div>
         <div class="profile-divider"></div>
         <div class="profile-status-row">
+          <span>Vehicle Reg No:</span>
+          <span id="dialog-vehicle-num" class="status-badge" style="font-weight:700; color:#0f172a; background:#f1f5f9;">--</span>
+        </div>
+        <div class="profile-status-row">
+          <span>Vehicle Type:</span>
+          <span id="dialog-vehicle-type" class="status-badge blue">Standard Car</span>
+        </div>
+        <div class="profile-status-row">
           <span>V2V Connectivity:</span>
           <span id="dialog-conn-status" class="status-badge green">Connected (1s Ts)</span>
         </div>
@@ -389,12 +458,15 @@
         </div>
         <div class="profile-status-row">
           <span>Radar Range:</span>
-          <span class="status-badge">500m Predictive Zone</span>
+          <span id="dialog-radar-range" class="status-badge">500m Predictive Zone</span>
         </div>
         <div class="profile-divider"></div>
         <div class="profile-actions" style="display:flex; flex-direction:column; gap:8px;">
           <button class="gmaps-btn-secondary" onclick="appController.closeProfileDialog(); appController.openSettingsDialog();" style="width:100%; background:#f1f5f9; color:#1e293b; border:1px solid #cbd5e1; padding:9px 14px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">
             SOS Emergency Settings
+          </button>
+          <button class="gmaps-btn-danger-outline" onclick="appController.handleLogout()">
+            🚪 Log Out / Change Vehicle
           </button>
           <button class="gmaps-btn-primary" onclick="appController.closeProfileDialog()" style="width:100%;">Done</button>
         </div>
@@ -457,8 +529,11 @@
         </form>
 
         <div class="profile-divider" style="margin-top:14px;"></div>
-        <div style="display:flex; gap:8px;">
-          <button class="gmaps-btn-primary" onclick="appController.closeSettingsDialog()" style="flex:1;">Done</button>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <button type="button" class="gmaps-btn-danger-outline" onclick="appController.handleLogout()">
+            🚪 Log Out / Change Vehicle
+          </button>
+          <button class="gmaps-btn-primary" onclick="appController.closeSettingsDialog()" style="width:100%;">Done</button>
         </div>
       </div>
     </div>

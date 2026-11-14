@@ -35,7 +35,7 @@ from backend.config import (
     VEHICLE_SIZE_MARGIN_DV, ACCURACY_FACTOR_K,
     SPEED_SMOOTHING_ALPHA, ALERT_COOLDOWN_SEC,
     AMBULANCE_CORRIDOR_LENGTH_LE, AMBULANCE_CORRIDOR_HALF_WIDTH_WE,
-    ANALYSIS_RADIUS_M
+    ANALYSIS_RADIUS_M, AMBULANCE_ANALYSIS_RADIUS_M
 )
 from backend.models import (
     VehicleRole, AlertLevel, RelativeBearing,
@@ -202,13 +202,19 @@ def process_single_telemetry(update: LocationUpdate) -> Optional[VehicleState]:
     vx, vy = build_velocity_vector(smoothed_spd, heading_deg)
 
     existing_v = vehicles.get(v_id)
-    ambulance_active = existing_v.ambulance_active if existing_v else (update.role == VehicleRole.AMBULANCE)
-    sos_active = existing_v.sos_active if existing_v else (update.role == VehicleRole.WOMEN_SAFETY)
+    ambulance_active = getattr(update, "ambulance_active", None)
+    if ambulance_active is None:
+        ambulance_active = existing_v.ambulance_active if existing_v else (update.role == VehicleRole.AMBULANCE)
+    sos_active = getattr(update, "sos_active", None)
+    if sos_active is None:
+        sos_active = existing_v.sos_active if existing_v else (update.role == VehicleRole.WOMEN_SAFETY)
 
     v_state = VehicleState(
         vehicle_id=v_id,
         label=label,
         role=update.role,
+        vehicle_type=getattr(update, "vehicle_type", "car"),
+        vehicle_number=getattr(update, "vehicle_number", None),
         latitude=update.latitude,
         longitude=update.longitude,
         accuracy=update.accuracy,
@@ -222,8 +228,8 @@ def process_single_telemetry(update: LocationUpdate) -> Optional[VehicleState]:
         timestamp=now,
         last_update_monotonic=now,
         is_active=True,
-        ambulance_active=ambulance_active,
-        sos_active=sos_active
+        ambulance_active=bool(ambulance_active),
+        sos_active=bool(sos_active)
     )
 
     vehicles[v_id] = v_state
@@ -288,11 +294,11 @@ async def evaluate_all_risks() -> List[Alert]:
         if not host_v and vehicles:
             host_v = next(iter(vehicles.values()))
 
-    # Determine analysis radius: 750m in Ambulance Mode, 500m in Standard Mode
+    # Determine analysis radius: 1000m (1km) in Ambulance Mode, 500m in Standard Mode
     is_host_ambulance = system_ambulance_mode or bool(host_v and (host_v.role == VehicleRole.AMBULANCE or host_v.ambulance_active))
-    current_analysis_radius = 750.0 if is_host_ambulance else ANALYSIS_RADIUS_M
+    current_analysis_radius = AMBULANCE_ANALYSIS_RADIUS_M if is_host_ambulance else ANALYSIS_RADIUS_M
 
-    # 2. Radius distance computation from host using Haversine (750m in Ambulance Mode)
+    # 2. Radius distance computation from host using Haversine (1000m in Ambulance Mode)
     if host_v:
         for vid, v in vehicles.items():
             dist = haversine_distance(host_v.latitude, host_v.longitude, v.latitude, v.longitude)
@@ -335,7 +341,7 @@ async def evaluate_all_risks() -> List[Alert]:
                     db_manager.log_alert(alt.model_dump())
 
     # 4. Ambulance Priority Corridor Evaluation (Section V-A)
-    # Radius is 750m and continuous alerts are shared to all vehicles on ambulance's route
+    # Radius is 1000m (1km) and continuous alerts are shared to all vehicles on ambulance's route
     for v_id, v in vehicles.items():
         if (v.role == VehicleRole.AMBULANCE or v.ambulance_active) and v.is_active:
             amb_route = active_route.get("coordinates") if (host_v and host_v.vehicle_id == v.vehicle_id) else None
@@ -367,7 +373,7 @@ def get_current_state_payload() -> dict:
             host_v = next(iter(vehicles.values()))
 
     is_host_ambulance = system_ambulance_mode or bool(host_v and (host_v.role == VehicleRole.AMBULANCE or host_v.ambulance_active))
-    current_analysis_radius = 750.0 if is_host_ambulance else ANALYSIS_RADIUS_M
+    current_analysis_radius = AMBULANCE_ANALYSIS_RADIUS_M if is_host_ambulance else ANALYSIS_RADIUS_M
 
     # Calculate exact distance from host vehicle for every vehicle
     if host_v:
@@ -440,6 +446,17 @@ async def websocket_endpoint(websocket: WebSocket):
                     data = json.loads(raw)
                     if data.get("type") == "PING":
                         await websocket.send_json({"type": "PONG", "timestamp": time.time()})
+                    elif data.get("type") == "IDENTIFY":
+                        vid = data.get("vehicle_id") or data.get("device_id")
+                        if vid and vid in vehicles:
+                            v_role = VehicleRole.AMBULANCE if data.get("role") == "ambulance" else VehicleRole.STANDARD
+                            vehicles[vid].role = v_role
+                            if data.get("label"):
+                                vehicles[vid].label = data["label"]
+                            if data.get("vehicle_type"):
+                                vehicles[vid].vehicle_type = data["vehicle_type"]
+                            if data.get("vehicle_number"):
+                                vehicles[vid].vehicle_number = data["vehicle_number"]
                     elif data.get("type") == "TELEMETRY":
                         update = LocationUpdate(**data.get("payload", {}))
                         global active_host_vehicle_id
@@ -567,13 +584,13 @@ async def toggle_ambulance(payload: AmbulanceTogglePayload):
             "status": "updated",
             "vehicle_id": v_id,
             "ambulance_active": v.ambulance_active,
-            "analysis_radius_m": 750.0 if payload.active else 500.0
+            "analysis_radius_m": AMBULANCE_ANALYSIS_RADIUS_M if payload.active else ANALYSIS_RADIUS_M
         }
     return {
         "status": "updated",
         "vehicle_id": v_id,
         "ambulance_active": payload.active,
-        "analysis_radius_m": 750.0 if payload.active else 500.0
+        "analysis_radius_m": AMBULANCE_ANALYSIS_RADIUS_M if payload.active else ANALYSIS_RADIUS_M
     }
 
 # -------------------------------------------------------------

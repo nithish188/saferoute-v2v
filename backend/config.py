@@ -28,9 +28,9 @@ ALERT_THRESHOLD_WARNING = 6.0       # t* <= 6 s
 ALERT_THRESHOLD_CRITICAL = 3.0      # t* <= 3 s
 
 # Ambulance Corridor & Radius parameters
-AMBULANCE_CORRIDOR_LENGTH_LE = 750.0 # Le = 750 m (Increased from 500m)
+AMBULANCE_CORRIDOR_LENGTH_LE = 1000.0 # Le = 1000 m (1 km)
 AMBULANCE_CORRIDOR_HALF_WIDTH_WE = 30.0 # we = 30 m
-AMBULANCE_ANALYSIS_RADIUS_M = 750.0 # 750 m analysis radius in Ambulance Mode
+AMBULANCE_ANALYSIS_RADIUS_M = 1000.0 # 1000 m (1 km) analysis radius in Ambulance Mode
 
 # Alert Cooldown (seconds)
 ALERT_COOLDOWN_SEC = 5.0

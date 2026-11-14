@@ -39,11 +39,17 @@ class LocationUpdate(BaseModel):
     heading: Optional[float] = None  # optional direct heading fix
     role: VehicleRole = VehicleRole.STANDARD
     label: Optional[str] = None
+    vehicle_type: Optional[str] = "car"
+    vehicle_number: Optional[str] = None
+    ambulance_active: Optional[bool] = False
+    sos_active: Optional[bool] = False
 
 class VehicleState(BaseModel):
     vehicle_id: str
     label: str
     role: VehicleRole
+    vehicle_type: Optional[str] = "car"
+    vehicle_number: Optional[str] = None
     latitude: float
     longitude: float
     accuracy: float
