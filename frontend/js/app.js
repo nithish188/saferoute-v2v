@@ -101,11 +101,21 @@ class GoogleMapsAppController {
     // 7. Start periodic 1.0-second telemetry broadcast (Ts = 1s, IEEE Table II)
     this.startTelemetryLoop();
 
-    // 8. Register Service Worker for Android PWA Install Support
+    // 8. Service Worker Management: Purge stale caches in Mobile APK
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(err => {
-        console.debug('ServiceWorker registration skipped:', err);
-      });
+      if (isMobileApk) {
+        // Mobile WebView APK: unregister service workers and clear cache storage to prevent stale cached bundles
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          for (let r of regs) r.unregister();
+        }).catch(() => {});
+        if ('caches' in window) {
+          caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
+        }
+      } else {
+        navigator.serviceWorker.register('/sw.js').catch(err => {
+          console.debug('ServiceWorker registration skipped:', err);
+        });
+      }
     }
   }
 
