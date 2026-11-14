@@ -101,7 +101,7 @@ active_routes: Dict[str, Dict[str, Any]] = {}  # Per-device active routes: vehic
 # Route Service
 route_service = RouteService(ref_lat=DEFAULT_REF_LAT, ref_lon=DEFAULT_REF_LON)
 
-def cleanup_stale_vehicles(max_idle_seconds: float = 90.0):
+def cleanup_stale_vehicles(max_idle_seconds: float = 20.0):
     """Prunes vehicles that haven't sent telemetry within max_idle_seconds."""
     now = time.time()
     stale_ids = [vid for vid, v in vehicles.items() if now - v.last_update_monotonic > max_idle_seconds]
@@ -274,6 +274,7 @@ async def ingest_batch_telemetry(updates: List[LocationUpdate]):
 
 async def evaluate_all_risks() -> List[Alert]:
     now = time.time()
+    cleanup_stale_vehicles(max_idle_seconds=15.0)
     alerts_generated: List[Alert] = []
     global ambulance_corridors
     ambulance_corridors = []
@@ -286,11 +287,6 @@ async def evaluate_all_risks() -> List[Alert]:
             if v.is_active and not vid.startswith("v2v_"):
                 host_v = v
                 break
-        if not host_v:
-            for cand in ["my_phone_device", "car_host"]:
-                if cand in vehicles and vehicles[cand].is_active:
-                    host_v = vehicles[cand]
-                    break
         if not host_v and vehicles:
             host_v = next(iter(vehicles.values()))
 
@@ -312,6 +308,9 @@ async def evaluate_all_risks() -> List[Alert]:
             if not v.is_active or v.vehicle_id == host_v.vehicle_id:
                 continue
             if not getattr(v, "in_analysis_zone", True):
+                continue
+            # Stationary filter: parked or stopped vehicles cannot produce a dynamic collision risk
+            if host_v.speed_smoothed < 1.5 and v.speed_smoothed < 1.5:
                 continue
 
             # Analytical Closest Approach (Eq. 7, 8, 9, 10) between "Me" and nearby vehicle
@@ -363,14 +362,10 @@ async def evaluate_all_risks() -> List[Alert]:
     return alerts_generated
 
 def get_current_state_payload() -> dict:
+    cleanup_stale_vehicles(max_idle_seconds=15.0)
     host_v = vehicles.get(active_host_vehicle_id)
     if not host_v and vehicles:
-        for cand in ["my_phone_device", "car_host"]:
-            if cand in vehicles:
-                host_v = vehicles[cand]
-                break
-        if not host_v:
-            host_v = next(iter(vehicles.values()))
+        host_v = next(iter(vehicles.values()))
 
     is_host_ambulance = system_ambulance_mode or bool(host_v and (host_v.role == VehicleRole.AMBULANCE or host_v.ambulance_active))
     current_analysis_radius = AMBULANCE_ANALYSIS_RADIUS_M if is_host_ambulance else ANALYSIS_RADIUS_M

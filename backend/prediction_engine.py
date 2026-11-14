@@ -114,6 +114,32 @@ class CollisionPredictionEngine:
 
         dist_now = math.sqrt(rx * rx + ry * ry)
 
+        # IEEE Section IV-B (Table II): Minimum moving speed threshold vmin = 2.0 m/s (~7.2 km/h).
+        # Two stationary vehicles (speed < 1.5 m/s) or vehicles moving away from each other (r_dot_u >= 0)
+        # cannot produce a dynamic trajectory collision.
+        if vi.speed_smoothed < 1.5 and vj.speed_smoothed < 1.5:
+            return PredictionResult(
+                t_star=None,
+                d_min=round(dist_now, 2),
+                d_safe=round(d_safe, 2),
+                is_risk=False,
+                level=AlertLevel.NONE,
+                r_dot_u=r_dot_u,
+                u_sq=u_sq
+            )
+
+        if r_dot_u >= 0:
+            # Vehicles are separating or moving parallel (distance is non-decreasing)
+            return PredictionResult(
+                t_star=None,
+                d_min=round(dist_now, 2),
+                d_safe=round(d_safe, 2),
+                is_risk=False,
+                level=AlertLevel.NONE,
+                r_dot_u=r_dot_u,
+                u_sq=u_sq
+            )
+
         # Directional verification: ensure vehicle is actually approaching along line of sight
         # Prevents false warnings when a vehicle drives perpendicular on an elevated flyover or parallel road
         if vi.speed_smoothed < 1.0 and vj.speed_smoothed >= 1.0 and dist_now > 5.0:

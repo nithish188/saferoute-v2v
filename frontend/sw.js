@@ -1,12 +1,12 @@
 // V2V SafeRoute Service Worker for Android PWA
-const CACHE_NAME = 'saferoute-v2v-v3';
+const CACHE_NAME = 'saferoute-v2v-v4';
 const APP_SHELL = [
   '/',
   '/manifest.json',
-  '/static/css/google_maps.css?v=2.2',
-  '/static/js/app.js?v=2.2',
-  '/static/js/map_controller.js?v=2.2',
-  '/static/js/audio_alerts.js?v=2.2',
+  '/static/css/google_maps.css?v=2.3',
+  '/static/js/app.js?v=2.3',
+  '/static/js/map_controller.js?v=2.3',
+  '/static/js/audio_alerts.js?v=2.3',
   '/static/icons/icon-192.png',
   '/static/icons/icon-512.png'
 ];

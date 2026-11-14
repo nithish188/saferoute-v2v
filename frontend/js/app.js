@@ -777,11 +777,21 @@ class GoogleMapsAppController {
         }
       }
 
-      // Merge local nearby vehicles with server-synced vehicles so local simulated traffic is never wiped out
-      const local = this._getLocalVehiclesDict();
-      const mergedVehicles = { ...vehicles, ...local };
-      const isVisible = (this.isNavigating || this.isCollisionSimActive);
-      window.mapController.updateConnectedVehicles(mergedVehicles, this.deviceId, isVisible, alerts);
+      // Render real-world connected peer devices (and active collision sim vehicle if running)
+      const mergedVehicles = { ...vehicles };
+      if (this.isCollisionSimActive && this.nearbyVehicles && this.nearbyVehicles["v2v_car_nearby"]) {
+        const simV = this.nearbyVehicles["v2v_car_nearby"];
+        mergedVehicles["v2v_car_nearby"] = {
+          vehicle_id: "v2v_car_nearby",
+          label: simV.label || "Red Hatchback (Approaching)",
+          latitude: simV.lat,
+          longitude: simV.lon,
+          heading_deg: simV.heading || 0,
+          speed_smoothed: simV.speed || 8.0,
+          role: "standard"
+        };
+      }
+      window.mapController.updateConnectedVehicles(mergedVehicles, this.deviceId, true, alerts);
 
       // Render ambulance priority corridors on map if present
       if (data.ambulance_corridors && window.mapController) {
@@ -1189,9 +1199,6 @@ class GoogleMapsAppController {
     // Start 2-second periodic V2V route collision check
     this.startRouteCollisionChecks();
 
-    // Start real-time movement of other connected vehicles using this app along the route corridor
-    this._startNearbyVehiclesTraffic();
-
     // Voice announcement
     if (!this.isAudioMuted && window.audioEngine) {
       window.audioEngine.speak(`Starting navigation to ${this.activeRoute.destination_name || 'destination'}. Monitoring V2V collision vectors.`);
@@ -1289,146 +1296,9 @@ class GoogleMapsAppController {
   }
 
   _startNearbyVehiclesTraffic() {
+    // Real connected vehicles from the cloud backend are rendered automatically.
+    // Synthetic background traffic is disabled so that only genuine devices are tracked.
     this._stopNearbyVehiclesTraffic();
-
-    // 1. Surveyed OSRM Road Centerlines for Avinashi Rd corridor
-    const AVINASHI_RD_EAST = [
-      [11.025076, 77.010040],
-      [11.025145, 77.010420],
-      [11.025174, 77.010601],
-      [11.025360, 77.011737],
-      [11.025439, 77.012515],
-      [11.025474, 77.013039],
-      [11.025519, 77.013986],
-      [11.025545, 77.014320],
-      [11.025579, 77.014969],
-      [11.025664, 77.015764],
-      [11.025772, 77.016534],
-      [11.025833, 77.017123],
-      [11.025918, 77.017776],
-      [11.026003, 77.018216],
-      [11.026114, 77.018718],
-      [11.026232, 77.019298],
-      [11.026418, 77.020207],
-      [11.026601, 77.020994]
-    ];
-
-    // 2. Active Route Path if available
-    const hasRoute = (this.activeRoute && this.activeRoute.coordinates && this.activeRoute.coordinates.length > 2);
-    const routeCoords = hasRoute ? this.activeRoute.coordinates : AVINASHI_RD_EAST;
-    const cumRoute = this._buildCumulativeDistances(routeCoords);
-    const totalRouteDist = cumRoute[cumRoute.length - 1] || 1000.0;
-
-    // 3. Anchor simulated vehicles directly around the user's live position
-    const userDist = this._getRouteProgressM(this.currentLat, this.currentLon, routeCoords, cumRoute);
-
-    this.nearbyVehicles = {
-      "v2v_car_lead": {
-        vehicle_id: "v2v_car_lead",
-        label: "Sedan",
-        role: "standard",
-        coords: routeCoords,
-        cumDists: cumRoute,
-        baseOffset: 35.0,
-        distM: (userDist + 35.0) % totalRouteDist,
-        laneOffsetM: 0.8,
-        speed: 8.5 // ~31 km/h
-      },
-      "v2v_car_trail": {
-        vehicle_id: "v2v_car_trail",
-        label: "SUV",
-        role: "standard",
-        coords: routeCoords,
-        cumDists: cumRoute,
-        baseOffset: -30.0,
-        distM: Math.max(5.0, (userDist - 30.0 + totalRouteDist) % totalRouteDist),
-        laneOffsetM: -0.8,
-        speed: 7.8 // ~28 km/h
-      },
-      "v2v_truck_corridor": {
-        vehicle_id: "v2v_truck_corridor",
-        label: "Truck",
-        role: "standard",
-        coords: routeCoords,
-        cumDists: cumRoute,
-        baseOffset: 80.0,
-        distM: (userDist + 80.0) % totalRouteDist,
-        laneOffsetM: 2.0,
-        speed: 7.0 // ~25 km/h
-      }
-    };
-
-    const dt = 1.0; // 1s GPS update period (Ts = 1s, IEEE Table II)
-
-    const runTrafficTick = async () => {
-      if (!this.isNavigating) {
-        this._stopNearbyVehiclesTraffic();
-        return;
-      }
-
-      const batch = [];
-      const currentUserDist = this._getRouteProgressM(this.currentLat, this.currentLon, routeCoords, cumRoute);
-
-      for (const [vid, v] of Object.entries(this.nearbyVehicles)) {
-        v.distM += v.speed * dt;
-
-        // Keep vehicles dynamically centered within visible proximity of user
-        const diff = v.distM - currentUserDist;
-        if (diff > 120.0 || diff < -60.0 || v.distM > totalRouteDist || v.distM < 0) {
-          v.distM = (currentUserDist + (v.baseOffset || 35.0) + totalRouteDist) % totalRouteDist;
-        }
-
-        const pos = this._interpolateAlongPolyline(v.distM, v.coords, v.cumDists);
-        if (!pos) continue;
-
-        let finalLat = pos.lat;
-        let finalLon = pos.lon;
-
-        // Apply road lane offset strictly perpendicular to road heading
-        if (v.laneOffsetM && Math.abs(v.laneOffsetM) > 0.01) {
-          const perpRad = (pos.heading + 90.0) * Math.PI / 180.0;
-          const dLat = (v.laneOffsetM * Math.cos(perpRad)) / 111320.0;
-          const dLon = (v.laneOffsetM * Math.sin(perpRad)) / (111320.0 * Math.cos(pos.lat * Math.PI / 180.0));
-          finalLat = Math.round((pos.lat + dLat) * 1000000) / 1000000;
-          finalLon = Math.round((pos.lon + dLon) * 1000000) / 1000000;
-        }
-
-        v.lat = finalLat;
-        v.lon = finalLon;
-        v.heading = pos.heading;
-        v.distance_from_host_m = Math.round(this._haversineDistM(this.currentLat, this.currentLon, finalLat, finalLon));
-
-        batch.push({
-          vehicle_id: v.vehicle_id,
-          label: v.label,
-          latitude: v.lat,
-          longitude: v.lon,
-          accuracy: 1.5,
-          speed: v.speed,
-          heading: v.heading,
-          role: v.role
-        });
-      }
-
-      // Render nearby road vehicles directly onto the map for instant display
-      if (!this.isCollisionSimActive && !this.isCollisionFrozen && window.mapController) {
-        const localVehicles = this._getLocalVehiclesDict();
-        window.mapController.updateConnectedVehicles(localVehicles, this.deviceId, true);
-      }
-
-      // Transmit batch telemetry of other connected vehicles to V2V network
-      try {
-        await fetch('/api/telemetry/batch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(batch)
-        });
-      } catch (e) {}
-    };
-
-    // Run tick 0 immediately on start so vehicles appear instantly
-    runTrafficTick();
-    this.nearbyVehiclesTimer = setInterval(runTrafficTick, 1000);
   }
 
   _stopNearbyVehiclesTraffic() {
@@ -1436,14 +1306,6 @@ class GoogleMapsAppController {
       clearInterval(this.nearbyVehiclesTimer);
       this.nearbyVehiclesTimer = null;
     }
-
-    // Clean up other vehicle markers from map
-    if (window.mapController) {
-      window.mapController.updateConnectedVehicles({}, this.deviceId, false);
-    }
-
-    // Clear other vehicles from server state
-    fetch('/api/vehicles/clear-all', { method: 'POST' }).catch(() => {});
   }
 
   // -------------------------------------------------------------
@@ -1793,11 +1655,6 @@ class GoogleMapsAppController {
     const hud = document.getElementById('gmaps-collision-inspector-hud');
     if (hud) hud.style.display = 'none';
 
-    // Resume normal route traffic when navigation is still active
-    if (this.isNavigating) {
-      this._startNearbyVehiclesTraffic();
-    }
-
     fetch('/api/vehicles/clear-all', { method: 'POST' }).catch(() => {});
   }
 
@@ -1892,6 +1749,16 @@ class GoogleMapsAppController {
     if (this.isCollisionFrozen) return; // Retain frozen accident HUD state
     const hud = document.getElementById('gmaps-collision-inspector-hud');
     if (!hud) return;
+
+    // False-positive suppression:
+    // If the user has not started navigating or is stationary (< 1.5 m/s), AND collision simulation is NOT running,
+    // do not show the collision inspector HUD card.
+    const isMoving = (this.currentSpeed && this.currentSpeed >= 1.5);
+    const shouldEvaluate = this.isCollisionSimActive || (this.isNavigating && isMoving);
+    if (!shouldEvaluate) {
+      hud.style.display = 'none';
+      return;
+    }
 
     // Filter alerts to STRICTLY find alert between "Me" (this.deviceId) and a nearby vehicle
     const colAlert = (alerts || []).find(a =>

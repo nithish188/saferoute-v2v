@@ -263,16 +263,6 @@ class GoogleMapController {
       return;
     }
 
-    // Display vehicles when actively navigating OR when collision sim is running
-    if (!isVisible) {
-      for (const vid of Object.keys(this.vehicleMarkers)) {
-        this.map.removeLayer(this.vehicleMarkers[vid]);
-        delete this.vehicleMarkers[vid];
-      }
-      this.clearCollisionPrediction();
-      return;
-    }
-
     // Dynamic radius check: 1000m (1km) in Ambulance Mode, 500m in Standard Mode
     const maxRadius = this.analysisRadiusM || 500.0;
 
@@ -293,13 +283,27 @@ class GoogleMapController {
       if (vid === myDeviceId) continue; // Don't draw our own device as another car
       if (!v || v.latitude === undefined || v.longitude === undefined) continue;
 
+      // Filter out synthetic background traffic (e.g. v2v_car_lead, v2v_truck_corridor).
+      // Only real connected users/devices appear on the map.
+      // The only simulated vehicle allowed is during an explicit collision simulation ('v2v_car_nearby').
+      const isSyntheticTraffic = typeof vid === 'string' && (
+        vid.startsWith('v2v_car_lead') ||
+        vid.startsWith('v2v_car_trail') ||
+        vid.startsWith('v2v_truck_corridor') ||
+        vid.startsWith('sim_')
+      );
+      if (isSyntheticTraffic) continue;
+
+      if (typeof vid === 'string' && vid === 'v2v_car_nearby' && !this.isCollisionSimActive) {
+        continue;
+      }
+
       // Strict radius check: calculate distance from host if host coordinates are known
       let distM = v.distance_from_host_m;
       if (this.hostLat && this.hostLon && v.latitude && v.longitude) {
         distM = this._haversine(this.hostLat, this.hostLon, v.latitude, v.longitude);
       }
-      const isSimVehicle = typeof vid === 'string' && vid.startsWith('v2v_');
-      if (!isSimVehicle && distM !== undefined && distM > maxRadius) {
+      if (distM !== undefined && distM > maxRadius) {
         continue;
       }
 
@@ -307,28 +311,47 @@ class GoogleMapController {
       const pos = [v.latitude, v.longitude];
       const speedKmh = Math.round((v.speed_smoothed || v.speed_raw || 0) * 3.6);
       const heading = v.heading_deg || 0;
-      const isAmbulance = (v.role === 'ambulance' || v.ambulance_active);
+      const isAmbulance = (v.role === 'ambulance' || v.ambulance_active || v.vehicle_type === 'ambulance');
+      const isBike = (v.vehicle_type === 'bike' || (v.label && v.label.toLowerCase().includes('bike')));
       const isThreatened = threatenedVehicles.has(vid);
 
       let carColor = '#475569'; // Standard vehicle slate
       if (isAmbulance) carColor = '#dc2626';
       else if (isThreatened) carColor = '#ea580c'; // Highlight threatened car in warning color
+      else if (isBike) carColor = '#0284c7';
 
+      let vehicleSvg;
+      if (isBike) {
+        vehicleSvg = `
+          <svg viewBox="0 0 32 32" width="24" height="24">
+            <circle cx="16" cy="7" r="4" fill="${carColor}"/>
+            <rect x="14" y="11" width="4" height="14" rx="2" fill="${carColor}"/>
+            <circle cx="16" cy="11" r="2.5" fill="#fef08a"/>
+            <circle cx="16" cy="25" r="2.5" fill="#ef4444"/>
+          </svg>
+        `;
+      } else {
+        vehicleSvg = `
+          <svg viewBox="0 0 32 32" width="26" height="26">
+            <rect x="9" y="3" width="14" height="26" rx="4" fill="${carColor}" stroke="#ffffff" stroke-width="1.5"/>
+            <rect x="11" y="8" width="10" height="5" rx="1" fill="#1e293b"/>
+            <rect x="11" y="18" width="10" height="4" rx="1" fill="#1e293b"/>
+            <circle cx="11" cy="4" r="1.5" fill="#fef08a"/>
+            <circle cx="21" cy="4" r="1.5" fill="#fef08a"/>
+            <circle cx="11" cy="27" r="1.5" fill="#ef4444"/>
+            <circle cx="21" cy="27" r="1.5" fill="#ef4444"/>
+          </svg>
+        `;
+      }
+
+      const typeIcon = isAmbulance ? '🚑 ' : (isBike ? '🏍️ ' : '🚗 ');
       const html = `
-        <div class="gmaps-v2v-car ${isThreatened ? 'threat-pulse' : ''}">
-          <div class="v2v-car-badge" style="${isThreatened ? 'background:#dc2626; color:#fff; font-weight:800;' : ''}">
-            ${isThreatened ? '⚠️ ' : ''}${v.label || 'V2V Vehicle'} • ${speedKmh} km/h
+        <div class="gmaps-v2v-car ${isThreatened ? 'threat-pulse' : ''} ${isAmbulance ? 'ambulance-pulse' : ''}">
+          <div class="v2v-car-badge" style="${isThreatened ? 'background:#dc2626; color:#fff; font-weight:800;' : (isAmbulance ? 'background:#b91c1c; color:#fff; font-weight:800;' : '')}">
+            ${isThreatened ? '⚠️ ' : typeIcon}${v.label || 'V2V Device'} • ${speedKmh} km/h
           </div>
           <div class="v2v-car-body" style="transform: rotate(${heading}deg);">
-            <svg viewBox="0 0 32 32" width="26" height="26">
-              <rect x="9" y="3" width="14" height="26" rx="4" fill="${carColor}" stroke="#ffffff" stroke-width="1.5"/>
-              <rect x="11" y="8" width="10" height="5" rx="1" fill="#1e293b"/>
-              <rect x="11" y="18" width="10" height="4" rx="1" fill="#1e293b"/>
-              <circle cx="11" cy="4" r="1.5" fill="#fef08a"/>
-              <circle cx="21" cy="4" r="1.5" fill="#fef08a"/>
-              <circle cx="11" cy="27" r="1.5" fill="#ef4444"/>
-              <circle cx="21" cy="27" r="1.5" fill="#ef4444"/>
-            </svg>
+            ${vehicleSvg}
           </div>
         </div>
       `;
